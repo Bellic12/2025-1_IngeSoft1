@@ -20,3 +20,9 @@ React es una biblioteca de JavaScript para construir interfaces de usuario inter
 Electron permite crear aplicaciones de escritorio multiplataforma usando tecnologías web (HTML, CSS, JS).
 
 - Documentación oficial: [Electron Documentación](https://www.electronjs.org/es/docs/latest/)
+
+### 🖥️ SQLite
+
+SQLite es una base de datos relacional basada en SQL,  ligera, embebida y sin servidor, ideal para aplicaciones locales y móviles.
+
+- Documentación oficial: [SQLite documentación](https://sqlite.org/docs.html)
