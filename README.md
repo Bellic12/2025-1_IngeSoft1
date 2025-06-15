@@ -32,4 +32,4 @@ Queremos que cada persona pueda crear sus propios bancos de preguntas organizado
 Gracias por visitar nuestro proyecto. Si tienes alguna sugerencia no dudes en decirnosla. 
 
 
-<span>![</span><span>Aquí la descripción de la imagen por si no carga</span><span>]</span><span>(</span><span>https://raw.githubusercontent.com/Bellic12/2025-1_IngeSoft1/master/Logo.png</span><span>)</span>
+[Logo Pretty Exam](Logo.png)
