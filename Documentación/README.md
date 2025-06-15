@@ -1,7 +1,7 @@
 ## 📅 Planificación del equipo
 
 Puedes consultar nuestra hoja de ruta, cronograma de entregas y asignaciones en el siguiente documento de Google Sheets:
-- [Plantilla de planificación](https://docs.google.com/spreadsheets/d/15XGkmXz1H8dz_a56slB_c2eTD_dCs8mURxhFH-IaF2w/edit?usp=sharing)
+- [Planificación del proyecto](https://docs.google.com/spreadsheets/d/15XGkmXz1H8dz_a56slB_c2eTD_dCs8mURxhFH-IaF2w/edit?usp=sharing)
 
 ---
 
