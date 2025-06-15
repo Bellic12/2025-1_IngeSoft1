@@ -30,6 +30,3 @@ Queremos que cada persona pueda crear sus propios bancos de preguntas organizado
 ---
 
 Gracias por visitar nuestro proyecto. Si tienes alguna sugerencia no dudes en decirnosla. 
-
-
-![Logo Pretty Exam](2025-1_IngeSoft1/Logo.png)
