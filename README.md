@@ -34,3 +34,7 @@ Gracias por visitar nuestro proyecto. Si tienes alguna sugerencia no dudes en de
 
 ![Logo](Logo.png)
 
+<div align="center">
+  <img src="Logo.png" alt="Logo del proyecto" width="300">
+</div>
+
