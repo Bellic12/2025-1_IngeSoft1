@@ -21,7 +21,7 @@ Electron permite crear aplicaciones de escritorio multiplataforma usando tecnolo
 
 - Documentación oficial: [Electron Documentación](https://www.electronjs.org/es/docs/latest/)
 
-### 🖥️ SQLite
+### 🗃️ SQLite
 
 SQLite es una base de datos relacional basada en SQL,  ligera, embebida y sin servidor, ideal para aplicaciones locales y móviles.
 
