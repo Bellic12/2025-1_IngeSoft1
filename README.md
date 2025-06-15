@@ -9,7 +9,7 @@
 ## 📌 Descripción del proyecto
 
 **Pretty Exam** es una herramienta de estudio autónomo diseñada específicamente para personas que buscan una mejor manera de preparación académica.  
-La aplicación permite crear, gestionar y realizar exámenes personalizados utilizando un banco de preguntas propio —este lo crea el usuario—, complementado también con la capacidad de generar preguntas automáticamente mediante AI a partir de un PDF.
+La aplicación permite crear, gestionar y realizar exámenes personalizados utilizando un banco de preguntas propio, este lo crea el usuario, complementado también con la capacidad de generar preguntas automáticamente mediante AI a partir de un PDF.
 
 ---
 
