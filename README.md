@@ -29,7 +29,7 @@ Queremos que cada persona pueda crear sus propios bancos de preguntas organizado
 
 ---
 
-Gracias por visitar nuestro proyecto. Si tienes alguna sugerencia no dudes en decirnosla. 
+Gracias por visitar nuestro proyecto. Si tienes alguna sugerencia no dudes en decírnosla. 
 
 
 <div align="center">
