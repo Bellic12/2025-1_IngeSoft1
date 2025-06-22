@@ -1,0 +1,7 @@
+dist
+dist-electron
+release
+node_modules
+*.cjs
+*.json5
+public

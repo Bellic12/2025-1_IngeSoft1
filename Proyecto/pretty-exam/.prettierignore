@@ -1,0 +1,16 @@
+# Salidas de build
+dist
+dist-electron
+release
+
+node_modules
+
+*.cjs
+*.json5
+
+*.html
+*.md
+
+public
+
+
