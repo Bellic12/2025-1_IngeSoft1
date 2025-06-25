@@ -1,7 +1,7 @@
 function App() {
   return (
     <>
-      <button className="btn btn-primary">Tailwind</button>
+      <button className="btn btn-primary">Tailwind hola</button>
     </>
   )
 }
