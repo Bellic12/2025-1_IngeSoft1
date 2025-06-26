@@ -5,19 +5,26 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && electron-builder",
+    "postinstall": "electron-rebuild && electron-builder install-app-deps",
+    "rebuild": "electron-rebuild",
+    "build": "vite build && npm run rebuild && electron-builder",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@rollup/plugin-commonjs": "^28.0.6",
     "@tailwindcss/vite": "^4.1.10",
     "daisyui": "^5.0.43",
+    "pg": "^8.16.2",
+    "pg-hstore": "^2.3.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "sequelize": "^6.37.7",
+    "sqlite3": "^5.1.7",
     "tailwindcss": "^4.1.10"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.1",
     "@vitejs/plugin-react": "^4.2.1",
     "electron": "^30.0.1",
     "electron-builder": "^24.13.3",

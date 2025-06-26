@@ -1,6 +1,8 @@
 import { app, BrowserWindow } from 'electron'
 // import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
+// Import ipc handlers
+import sequelize from './config/database.js'
 import path from 'node:path'
 
 // const require = createRequire(import.meta.url)
@@ -67,4 +69,15 @@ app.on('activate', () => {
   }
 })
 
-app.whenReady().then(createWindow)
+app.whenReady().then(async () => {
+  try {
+    await sequelize.authenticate()
+    console.log('Database connection established.')
+  } catch (err) {
+    console.error('Error connecting to the database:', err)
+    app.quit()
+    return
+  }
+
+  createWindow()
+})
