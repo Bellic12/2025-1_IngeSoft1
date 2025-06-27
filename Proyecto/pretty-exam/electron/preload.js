@@ -18,7 +18,14 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     const [channel, ...omit] = args
     return ipcRenderer.invoke(channel, ...omit)
   },
-
-  // You can expose other APTs you need here.
-  // ...
 })
+
+// Question API
+contextBridge.exposeInMainWorld('questionAPI', {
+  getAll: () => ipcRenderer.invoke('questions:getAll'),
+  create: data => ipcRenderer.invoke('questions:create', data),
+  update: (id, data) => ipcRenderer.invoke('questions:update', id, data),
+  delete: id => ipcRenderer.invoke('questions:delete', id),
+})
+
+// Add more APIs as needed

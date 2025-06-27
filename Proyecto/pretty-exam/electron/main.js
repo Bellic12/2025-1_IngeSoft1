@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron'
 // import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 // Import ipc handlers
+import './ipcHandlers/question.ipc.js'
 import sequelize from './config/database.js'
 import path from 'node:path'
 

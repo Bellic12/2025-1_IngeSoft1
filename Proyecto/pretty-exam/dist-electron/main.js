@@ -6,22 +6,30 @@ import path$1 from "node:path";
 const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
 const sequelize = new Sequelize({
   dialect: "sqlite",
-  storage: join(__dirname$1, "..", "..", "db.db"),
+  storage: join(__dirname$1, "..", "pretty_exam.db"),
   logging: false
 });
 const Question = sequelize.define(
   "Question",
   {
-    id_question: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    question_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     text: { type: DataTypes.TEXT, allowNull: false },
     type: DataTypes.STRING,
-    id_category: DataTypes.INTEGER,
-    created_at: DataTypes.DATE,
-    updated_at: DataTypes.DATE,
-    source: DataTypes.TEXT
+    category_id: DataTypes.INTEGER,
+    source: DataTypes.TEXT,
+    created_at: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+      allowNull: false
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+      allowNull: false
+    }
   },
   {
-    tableName: "question",
+    tableName: "Question",
     timestamps: false
   }
 );
