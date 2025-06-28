@@ -4,10 +4,10 @@ const QuestionController = {
   getAll: async () => {
     return await Question.findAll()
   },
-   async data => {
+  create: async data => {
     return await Question.create(data)
   },
-  update: create:async (id, data) => {
+  update: async (id, data) => {
     return await Question.update(data, { where: { id_question: id } })
   },
   delete: async id => {
