@@ -28,4 +28,12 @@ contextBridge.exposeInMainWorld('questionAPI', {
   delete: id => ipcRenderer.invoke('questions:delete', id),
 })
 
+// Option API
+contextBridge.exposeInMainWorld('optionAPI', {
+  getAll: () => ipcRenderer.invoke('options:getAll'),
+  create: data => ipcRenderer.invoke('options:create', data),
+  update: (id, data) => ipcRenderer.invoke('options:update', id, data),
+  delete: id => ipcRenderer.invoke('options:delete', id),
+})
+
 // Add more APIs as needed
