@@ -36,4 +36,10 @@ contextBridge.exposeInMainWorld('optionAPI', {
   delete: id => ipcRenderer.invoke('options:delete', id),
 })
 
-// Add more APIs as needed
+// Category API
+contextBridge.exposeInMainWorld('examAPI', {
+  getAll: () => ipcRenderer.invoke('exams:getAll'),
+  create: data => ipcRenderer.invoke('exams:create', data),
+  update: (id, data) => ipcRenderer.invoke('exams:update', id, data),
+  delete: id => ipcRenderer.invoke('exams:delete', id),
+})
