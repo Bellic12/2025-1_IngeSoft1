@@ -18,7 +18,7 @@ const ExamController = {
         {
           name: data.name,
           description: data.description,
-          duration: data.duration,
+          duration_minutes: data.duration_minutes,
         },
         { transaction: t }
       )
@@ -43,7 +43,7 @@ const ExamController = {
         {
           name: data.name,
           description: data.description,
-          duration: data.duration,
+          duration_minutes: data.duration_minutes,
         },
         { where: { exam_id: id }, transaction: t }
       )

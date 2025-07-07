@@ -39,7 +39,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
     if (question && type !== question.type) {
       setOptions(getInitialOptions(type))
     }
-  }, [type])
+  }, [question, type])
 
   const handleOnChangeType = event => {
     setType(event.target.value)

@@ -30,3 +30,9 @@ electron.contextBridge.exposeInMainWorld("optionAPI", {
   update: (id, data) => electron.ipcRenderer.invoke("options:update", id, data),
   delete: (id) => electron.ipcRenderer.invoke("options:delete", id)
 });
+electron.contextBridge.exposeInMainWorld("examAPI", {
+  getAll: () => electron.ipcRenderer.invoke("exams:getAll"),
+  create: (data) => electron.ipcRenderer.invoke("exams:create", data),
+  update: (id, data) => electron.ipcRenderer.invoke("exams:update", id, data),
+  delete: (id) => electron.ipcRenderer.invoke("exams:delete", id)
+});

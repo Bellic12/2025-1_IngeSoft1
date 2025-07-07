@@ -36,7 +36,7 @@ contextBridge.exposeInMainWorld('optionAPI', {
   delete: id => ipcRenderer.invoke('options:delete', id),
 })
 
-// Category API
+// Exam API
 contextBridge.exposeInMainWorld('examAPI', {
   getAll: () => ipcRenderer.invoke('exams:getAll'),
   create: data => ipcRenderer.invoke('exams:create', data),

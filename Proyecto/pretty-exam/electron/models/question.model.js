@@ -35,6 +35,7 @@ Question.associate = () => {
     through: 'ExamQuestion',
     foreignKey: 'question_id',
     otherKey: 'exam_id',
+    timestamps: false,
     as: 'exams',
     onDelete: 'CASCADE',
   })
