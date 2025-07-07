@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
+import QuestionFactory from '../../factories/QuestionFactory'
 
 const getInitialOptions = type =>
   type === 'multiple_choice'
@@ -70,33 +71,25 @@ const CreateQuestion = ({ fetchQuestions }) => {
   const handleSubmit = async event => {
     event.preventDefault()
     setFormError('')
-    if (type === 'multiple_choice' && !options.some(option => option.isCorrect)) {
-      setFormError('Debe seleccionar al menos una opción correcta')
-      return
-    }
-    if (type === 'true_false' && !options.some(option => option.isCorrect)) {
-      setFormError('Debe seleccionar una respuesta correcta')
-      return
-    }
-    setLoading(true)
     try {
-      // eslint-disable-next-line
-      const createdQuestion = await window.questionAPI.create({
+      const questionObj = QuestionFactory.createQuestion(type, {
         text,
-        type,
         category_id: 1,
         options: options.map(opt => ({
           text: opt.text,
           is_correct: opt.isCorrect,
         })),
       })
+      questionObj.validate()
+      setLoading(true)
+      // eslint-disable-next-line
+      const createdQuestion = await window.questionAPI.create(questionObj.toAPIFormat())
       resetForm()
       document.getElementById('modal_create_question').close()
       toast.success('Pregunta creada exitosamente')
       fetchQuestions()
     } catch (error) {
-      console.error('Error al crear la pregunta:', error)
-      toast.error('Error al crear la pregunta')
+      setFormError(error.message)
       setLoading(false)
     }
   }

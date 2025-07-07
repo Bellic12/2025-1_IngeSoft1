@@ -1,6 +1,7 @@
 import { Pencil } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
+import QuestionFactory from '../../factories/QuestionFactory'
 
 const getInitialOptions = (type, optionsFromQuestion) => {
   if (optionsFromQuestion && optionsFromQuestion.length > 0) {
@@ -103,20 +104,20 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
   const handleSubmit = async event => {
     event.preventDefault()
     setFormError('')
-    if (type === 'multiple_choice' && !options.some(option => option.isCorrect)) {
-      setFormError('Debe seleccionar al menos una opción correcta')
-      return
-    }
-    if (type === 'true_false' && !options.some(option => option.isCorrect)) {
-      setFormError('Debe seleccionar una respuesta correcta')
-      return
-    }
-    setLoading(true)
     try {
-      await window.questionAPI.update(question.question_id, {
+      const questionObj = QuestionFactory.createQuestion(type, {
         text,
-        type,
         category_id: categoryId,
+        options: options.map(opt => ({
+          text: opt.text,
+          is_correct: opt.isCorrect,
+          option_id: opt.option_id || undefined,
+        })),
+      })
+      questionObj.validate()
+      setLoading(true)
+      await window.questionAPI.update(question.question_id, {
+        ...questionObj.toAPIFormat(),
         options: options.map(opt => ({
           text: opt.text,
           is_correct: opt.isCorrect,
@@ -127,10 +128,9 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
       fetchQuestions()
       document.getElementById('modal_update_question' + question.question_id).close()
     } catch (error) {
-      console.error('Error al actualizar la pregunta:', error)
-      toast.error('Error al actualizar la pregunta')
+      setFormError(error.message)
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const resetForm = () => {
