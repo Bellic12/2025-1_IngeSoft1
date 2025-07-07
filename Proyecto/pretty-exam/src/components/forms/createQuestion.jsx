@@ -15,6 +15,7 @@ const CreateQuestion = ({ fetchQuestions }) => {
   const [type, setType] = useState('multiple_choice')
   const [options, setOptions] = useState(getInitialOptions('multiple_choice'))
   const [loading, setLoading] = useState(false)
+  const [formError, setFormError] = useState('')
 
   useEffect(() => {
     setOptions(getInitialOptions(type))
@@ -34,15 +35,18 @@ const CreateQuestion = ({ fetchQuestions }) => {
   }
 
   const handleOnSelectOption = (e, index) => {
-    const newOptions = [...options]
     if (type === 'multiple_choice') {
+      const newOptions = [...options]
       newOptions[index].isCorrect = e.target.checked
+      setOptions(newOptions)
     } else {
-      newOptions.forEach((option, i) => {
-        option.isCorrect = i === index ? e.target.checked : false
-      })
+      // Para true_false: marcar solo la opción seleccionada como correcta
+      const newOptions = options.map((option, i) => ({
+        ...option,
+        isCorrect: i === index,
+      }))
+      setOptions(newOptions)
     }
-    setOptions(newOptions)
   }
 
   const handleOptionTextChange = (e, index) => {
@@ -60,16 +64,23 @@ const CreateQuestion = ({ fetchQuestions }) => {
     setType('multiple_choice')
     setOptions(getInitialOptions('multiple_choice'))
     setLoading(false)
+    setFormError('')
   }
 
   const handleSubmit = async event => {
     event.preventDefault()
+    setFormError('')
     if (type === 'multiple_choice' && !options.some(option => option.isCorrect)) {
-      toast.error('Debe seleccionar al menos una opción correcta')
+      setFormError('Debe seleccionar al menos una opción correcta')
+      return
+    }
+    if (type === 'true_false' && !options.some(option => option.isCorrect)) {
+      setFormError('Debe seleccionar una respuesta correcta')
       return
     }
     setLoading(true)
     try {
+      // eslint-disable-next-line
       const createdQuestion = await window.questionAPI.create({
         text,
         type,
@@ -79,7 +90,6 @@ const CreateQuestion = ({ fetchQuestions }) => {
           is_correct: opt.isCorrect,
         })),
       })
-      console.log('Pregunta creada:', createdQuestion)
       resetForm()
       document.getElementById('modal_create_question').close()
       toast.success('Pregunta creada exitosamente')
@@ -100,7 +110,11 @@ const CreateQuestion = ({ fetchQuestions }) => {
         <Plus />
       </button>
       <dialog id="modal_create_question" className="modal">
-        <form method="dialog" className="modal-box flex flex-col gap-4" onSubmit={handleSubmit}>
+        <form
+          method="dialog"
+          className="modal-box flex flex-col gap-4 bg-base-300"
+          onSubmit={handleSubmit}
+        >
           <button
             className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
             onClick={e => {
@@ -163,7 +177,7 @@ const CreateQuestion = ({ fetchQuestions }) => {
                     onChange={e => handleOnSelectOption(e, index)}
                   />
                   <button
-                    className="btn btn-secondary btn-sm"
+                    className="btn btn-primary btn-sm btn-outline rounded-xl"
                     type="button"
                     onClick={() => handleRemoveOption(index)}
                   >
@@ -181,30 +195,37 @@ const CreateQuestion = ({ fetchQuestions }) => {
                     readOnly
                   />
                   <input
-                    type="checkbox"
-                    className="checkbox"
+                    type="radio"
+                    name="true_false_option"
+                    className="radio"
                     checked={!!options[0]?.isCorrect}
-                    onChange={e => handleOnSelectOption(e, 0)}
+                    onChange={() => handleOnSelectOption({ target: { checked: true } }, 0)}
                   />
                 </div>
                 <div className="flex items-center gap-2">
                   <input type="text" className="input w-full bg-red-800" value="Falso" readOnly />
                   <input
-                    type="checkbox"
-                    className="checkbox"
+                    type="radio"
+                    name="true_false_option"
+                    className="radio"
                     checked={!!options[1]?.isCorrect}
-                    onChange={e => handleOnSelectOption(e, 1)}
+                    onChange={() => handleOnSelectOption({ target: { checked: true } }, 1)}
                   />
                 </div>
               </>
             )}
             {type === 'multiple_choice' && (
-              <button className="btn btn-secondary" type="button" onClick={handleAddOption}>
+              <button
+                className="btn btn-primary btn-outline"
+                type="button"
+                onClick={handleAddOption}
+              >
                 Añadir opción
               </button>
             )}
           </div>
-          <button className="btn btn-primary" type="submit" disabled={loading}>
+          {formError && <div className="text-error text-sm mb-2">{formError}</div>}
+          <button className="btn btn-secondary btn-outline" type="submit" disabled={loading}>
             <span className={loading ? 'loading' : ''}>{loading ? '' : 'Crear pregunta'}</span>
           </button>
         </form>

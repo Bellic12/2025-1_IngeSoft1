@@ -1,5 +1,5 @@
 import { Pencil } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
 
 const getInitialOptions = (type, optionsFromQuestion) => {
@@ -23,22 +23,48 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
   const [type, setType] = useState('multiple_choice')
   const [options, setOptions] = useState([])
   // eslint-disable-next-line no-unused-vars
-  const [categoryId, setCategoryId] = useState(1) // Valor por defecto
+  const [categoryId, setCategoryId] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [formError, setFormError] = useState('')
+
+  const originalState = useRef({})
 
   useEffect(() => {
     if (question) {
       setText(question.text || '')
       setType(question.type || 'multiple_choice')
       setOptions(getInitialOptions(question.type, question.options))
+      originalState.current = {
+        text: question.text || '',
+        type: question.type || 'multiple_choice',
+        options: getInitialOptions(question.type, question.options),
+      }
     }
   }, [question])
 
   useEffect(() => {
-    // Si el tipo cambia, pero no es por cargar la pregunta, reiniciar opciones
-    if (question && type !== question.type) {
-      setOptions(getInitialOptions(type))
-    }
+    if (!question) return
+    setOptions(prevOptions => {
+      if (type === 'multiple_choice') {
+        if (
+          question.type === 'true_false' ||
+          (prevOptions.length === 2 &&
+            prevOptions[0].text === 'Verdadero' &&
+            prevOptions[1].text === 'Falso')
+        ) {
+          return [{ text: '', isCorrect: false }]
+        }
+        return prevOptions.length > 0 && prevOptions[0].text !== 'Verdadero'
+          ? prevOptions
+          : [{ text: '', isCorrect: false }]
+      } else if (type === 'true_false') {
+        return [
+          { text: 'Verdadero', isCorrect: false },
+          { text: 'Falso', isCorrect: false },
+        ]
+      }
+      return prevOptions
+    })
   }, [type])
 
   const handleOnChangeType = event => {
@@ -46,15 +72,18 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
   }
 
   const handleOnSelectOption = (e, index) => {
-    const newOptions = [...options]
     if (type === 'multiple_choice') {
+      const newOptions = [...options]
       newOptions[index].isCorrect = e.target.checked
+      setOptions(newOptions)
     } else {
-      newOptions.forEach((option, i) => {
-        option.isCorrect = i === index ? e.target.checked : false
-      })
+      // Para true_false: marcar solo la opción seleccionada como correcta
+      const newOptions = options.map((option, i) => ({
+        ...option,
+        isCorrect: i === index,
+      }))
+      setOptions(newOptions)
     }
-    setOptions(newOptions)
   }
 
   const handleOptionTextChange = (e, index) => {
@@ -73,8 +102,13 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
 
   const handleSubmit = async event => {
     event.preventDefault()
+    setFormError('')
     if (type === 'multiple_choice' && !options.some(option => option.isCorrect)) {
-      toast.error('Debe seleccionar al menos una opción correcta')
+      setFormError('Debe seleccionar al menos una opción correcta')
+      return
+    }
+    if (type === 'true_false' && !options.some(option => option.isCorrect)) {
+      setFormError('Debe seleccionar una respuesta correcta')
       return
     }
     setLoading(true)
@@ -99,23 +133,39 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
     setLoading(false)
   }
 
+  const resetForm = () => {
+    setText(originalState.current.text)
+    setType(originalState.current.type)
+    setOptions(originalState.current.options)
+    setLoading(false)
+    setFormError('')
+  }
+
   const handleOpenModal = () => {
+    resetForm()
     document.getElementById('modal_update_question' + question.question_id).showModal()
+  }
+
+  const handleCloseModal = e => {
+    e.preventDefault()
+    resetForm()
+    document.getElementById('modal_update_question' + question.question_id).close()
   }
 
   return (
     <>
-      <button className="btn btn-warning btn-square" onClick={handleOpenModal}>
-        <Pencil />
+      <button className="btn btn-outline btn-primary btn-square btn-sm" onClick={handleOpenModal}>
+        <Pencil className="w-4 h-4" />
       </button>
       <dialog id={'modal_update_question' + question.question_id} className="modal">
-        <form method="dialog" className="modal-box flex flex-col gap-4" onSubmit={handleSubmit}>
+        <form
+          method="dialog"
+          className="modal-box flex flex-col gap-4 bg-base-300"
+          onSubmit={handleSubmit}
+        >
           <button
             className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-            onClick={e => {
-              e.preventDefault()
-              document.getElementById('modal_update_question' + question.question_id).close()
-            }}
+            onClick={handleCloseModal}
           >
             ✕
           </button>
@@ -171,7 +221,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
                     onChange={e => handleOnSelectOption(e, index)}
                   />
                   <button
-                    className="btn btn-secondary btn-sm"
+                    className="btn btn-primary btn-outline btn-sm rounded-xl"
                     type="button"
                     onClick={() => handleRemoveOption(index)}
                   >
@@ -189,30 +239,49 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
                     readOnly
                   />
                   <input
-                    type="checkbox"
-                    className="checkbox"
-                    checked={!!options[0]?.isCorrect}
-                    onChange={e => handleOnSelectOption(e, 0)}
+                    type="radio"
+                    name={`true_false_option_${question.question_id}`}
+                    className="radio"
+                    checked={!!options.find(opt => opt.text === 'Verdadero')?.isCorrect}
+                    onChange={() => {
+                      const newOptions = options.map(opt => ({
+                        ...opt,
+                        isCorrect: opt.text === 'Verdadero',
+                      }))
+                      setOptions(newOptions)
+                    }}
                   />
                 </div>
                 <div className="flex items-center gap-2">
                   <input type="text" className="input w-full bg-red-800" value="Falso" readOnly />
                   <input
-                    type="checkbox"
-                    className="checkbox"
-                    checked={!!options[1]?.isCorrect}
-                    onChange={e => handleOnSelectOption(e, 1)}
+                    type="radio"
+                    name={`true_false_option_${question.question_id}`}
+                    className="radio"
+                    checked={!!options.find(opt => opt.text === 'Falso')?.isCorrect}
+                    onChange={() => {
+                      const newOptions = options.map(opt => ({
+                        ...opt,
+                        isCorrect: opt.text === 'Falso',
+                      }))
+                      setOptions(newOptions)
+                    }}
                   />
                 </div>
               </>
             )}
             {type === 'multiple_choice' && (
-              <button className="btn btn-secondary" type="button" onClick={handleAddOption}>
+              <button
+                className="btn btn-primary btn-outline"
+                type="button"
+                onClick={handleAddOption}
+              >
                 Añadir opción
               </button>
             )}
           </div>
-          <button className="btn btn-primary" type="submit" disabled={loading}>
+          {formError && <div className="text-error text-sm mb-2">{formError}</div>}
+          <button className="btn btn-secondary btn-outline" type="submit" disabled={loading}>
             <span className={loading ? 'loading' : ''}>{loading ? '' : 'Actualizar pregunta'}</span>
           </button>
         </form>
