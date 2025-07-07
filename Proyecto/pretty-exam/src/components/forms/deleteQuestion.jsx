@@ -29,13 +29,13 @@ const DeleteQuestion = ({ question, fetchQuestions }) => {
 
   return (
     <>
-      <button className="btn btn-error btn-square" onClick={handleOpenModal}>
-        <Trash2 />
+      <button className="btn btn-outline btn-error btn-square btn-sm" onClick={handleOpenModal}>
+        <Trash2 className="w-4 h-4" />
       </button>
       <dialog id={'modal_delete_question' + question.question_id} className="modal">
         <div className="modal-box flex flex-col gap-4">
           <button
-            className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+            className="btn btn-outline btn-sm btn-circle btn-ghost absolute right-2 top-2"
             onClick={e => {
               e.preventDefault()
               handleCloseModal()
@@ -48,11 +48,16 @@ const DeleteQuestion = ({ question, fetchQuestions }) => {
             ¿Estás seguro de que deseas eliminar esta pregunta? Esta acción no se puede deshacer.
           </p>
           <div className="flex justify-end gap-2">
-            <button className="btn" type="button" onClick={handleCloseModal} disabled={loading}>
+            <button
+              className="btn btn-outline"
+              type="button"
+              onClick={handleCloseModal}
+              disabled={loading}
+            >
               Cancelar
             </button>
             <button
-              className="btn btn-error"
+              className="btn btn-outline btn-error"
               type="button"
               onClick={handleDelete}
               disabled={loading}
