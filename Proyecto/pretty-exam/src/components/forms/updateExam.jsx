@@ -12,7 +12,7 @@ const UpdateExam = ({ exam, fetchExams }) => {
     if (exam) {
       setName(exam.name || '')
       setDescription(exam.description || '')
-      setDuration(exam.duration || '')
+      setDuration(exam.duration_minutes || '')
     }
   }, [exam])
 
@@ -20,7 +20,7 @@ const UpdateExam = ({ exam, fetchExams }) => {
     // Reset form with current exam data
     setName(exam.name || '')
     setDescription(exam.description || '')
-    setDuration(exam.duration || '')
+    setDuration(exam.duration_minutes || '')
     document.getElementById('modal_update_exam' + exam.exam_id).showModal()
   }
 
@@ -76,7 +76,10 @@ const UpdateExam = ({ exam, fetchExams }) => {
 
   return (
     <>
-      <button className="btn btn-ghost btn-sm btn-circle text-warning hover:bg-warning hover:text-warning-content" onClick={handleOpenModal}>
+      <button
+        className="btn btn-ghost btn-sm btn-circle text-warning hover:bg-warning hover:text-warning-content"
+        onClick={handleOpenModal}
+      >
         <Edit className="w-4 h-4" />
       </button>
       <dialog id={'modal_update_exam' + exam.exam_id} className="modal">
@@ -129,11 +132,11 @@ const UpdateExam = ({ exam, fetchExams }) => {
           {/* Duración */}
           <div className="form-control flex flex-col gap-2">
             <label className="label">
-              <span className="label-text">Duración</span>
+              <span className="label-text">Duración (minutos)</span>
             </label>
             <input
-              type="text"
-              placeholder="Ej: 60 minutos, 1 hora, etc."
+              type="number"
+              placeholder="Ej: 60"
               className="input input-bordered w-full bg-base-100"
               value={duration}
               onChange={e => setDuration(e.target.value)}

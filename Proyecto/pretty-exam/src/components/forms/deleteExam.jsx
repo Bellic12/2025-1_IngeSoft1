@@ -29,7 +29,10 @@ const DeleteExam = ({ exam, fetchExams }) => {
 
   return (
     <>
-      <button className="btn btn-ghost btn-sm btn-circle text-error hover:bg-error hover:text-error-content" onClick={handleOpenModal}>
+      <button
+        className="btn btn-ghost btn-sm btn-circle text-error hover:bg-error hover:text-error-content"
+        onClick={handleOpenModal}
+      >
         <Trash2 className="w-4 h-4" />
       </button>
       <dialog id={'modal_delete_exam' + exam.exam_id} className="modal">

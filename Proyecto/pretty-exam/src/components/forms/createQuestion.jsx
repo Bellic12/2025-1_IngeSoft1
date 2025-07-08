@@ -11,7 +11,7 @@ const getInitialOptions = type =>
         { text: 'Falso', isCorrect: false },
       ]
 
-const CreateQuestion = ({ fetchQuestions }) => {
+const CreateQuestion = ({ fetchQuestions, isInModal = false, onClose }) => {
   const [text, setText] = useState('')
   const [type, setType] = useState('multiple_choice')
   const [options, setOptions] = useState(getInitialOptions('multiple_choice'))
@@ -85,13 +85,134 @@ const CreateQuestion = ({ fetchQuestions }) => {
       // eslint-disable-next-line
       const createdQuestion = await window.questionAPI.create(questionObj.toAPIFormat())
       resetForm()
-      document.getElementById('modal_create_question').close()
+      if (!isInModal) {
+        document.getElementById('modal_create_question').close()
+      } else if (onClose) {
+        onClose()
+      }
       toast.success('Pregunta creada exitosamente')
       fetchQuestions()
     } catch (error) {
       setFormError(error.message)
       setLoading(false)
     }
+  }
+
+  // Si está dentro de otro modal, renderizar solo el formulario
+  if (isInModal) {
+    return (
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        {formError && <div className="alert alert-error">{formError}</div>}
+
+        {/* Pregunta */}
+        <div className="form-control flex flex-col gap-2">
+          <label className="label">
+            <span className="label-text">Pregunta</span>
+          </label>
+          <input
+            type="text"
+            placeholder="Escribe la pregunta aquí"
+            className="input input-bordered w-full"
+            value={text}
+            onChange={e => setText(e.target.value)}
+            required
+          />
+        </div>
+
+        {/* Tipo de pregunta */}
+        <div className="form-control flex flex-col gap-2">
+          <label className="label">
+            <span className="label-text">Tipo de pregunta</span>
+          </label>
+          <select
+            className="select select-bordered w-full"
+            value={type}
+            onChange={handleOnChangeType}
+          >
+            <option value="multiple_choice">Opción múltiple</option>
+            <option value="true_false">Verdadero/Falso</option>
+          </select>
+        </div>
+
+        {/* Opciones */}
+        <div className="form-control flex flex-col gap-2">
+          <label className="label">
+            <span className="label-text">Opciones</span>
+          </label>
+          {type === 'multiple_choice' ? (
+            options.map((option, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder={`Opción ${index + 1}`}
+                  className="input input-bordered w-full"
+                  value={option.text}
+                  onChange={e => handleOptionTextChange(e, index)}
+                  required
+                />
+                <input
+                  type="checkbox"
+                  className="checkbox"
+                  checked={!!option.isCorrect}
+                  onChange={e => handleOnSelectOption(e, index)}
+                />
+                <button
+                  className="btn btn-secondary btn-sm"
+                  type="button"
+                  onClick={() => handleRemoveOption(index)}
+                >
+                  ✕
+                </button>
+              </div>
+            ))
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  className="input input-bordered w-full bg-green-800"
+                  value="Verdadero"
+                  readOnly
+                />
+                <input
+                  type="checkbox"
+                  className="checkbox"
+                  checked={!!options[0]?.isCorrect}
+                  onChange={e => handleOnSelectOption(e, 0)}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  className="input input-bordered w-full bg-red-800"
+                  value="Falso"
+                  readOnly
+                />
+                <input
+                  type="checkbox"
+                  className="checkbox"
+                  checked={!!options[1]?.isCorrect}
+                  onChange={e => handleOnSelectOption(e, 1)}
+                />
+              </div>
+            </>
+          )}
+          {type === 'multiple_choice' && (
+            <button className="btn btn-secondary" type="button" onClick={handleAddOption}>
+              Añadir opción
+            </button>
+          )}
+        </div>
+
+        <button className="btn btn-primary" type="submit" disabled={loading}>
+          {loading ? (
+            <span className="loading loading-spinner loading-sm"></span>
+          ) : (
+            'Crear pregunta'
+          )}
+        </button>
+      </form>
+    )
   }
 
   return (
@@ -112,7 +233,11 @@ const CreateQuestion = ({ fetchQuestions }) => {
             className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
             onClick={e => {
               e.preventDefault()
-              document.getElementById('modal_create_question').close()
+              if (!isInModal) {
+                document.getElementById('modal_create_question').close()
+              } else if (onClose) {
+                onClose()
+              }
               resetForm()
             }}
           >

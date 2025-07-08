@@ -263,6 +263,13 @@ const ExamController = {
     });
     return exams.map((e) => e.get({ plain: true }));
   },
+  // Get an exam by ID with associated questions
+  getById: async (id) => {
+    const exam = await Exam.findByPk(id, {
+      include: [{ model: Question, as: "questions" }]
+    });
+    return exam ? exam.get({ plain: true }) : null;
+  },
   // Create a new exam with associated questions
   create: async (data) => {
     const t = await sequelize.transaction();
@@ -322,10 +329,65 @@ const ExamController = {
       await t.rollback();
       throw err;
     }
+  },
+  // Get questions associated with an exam
+  getQuestions: async (examId) => {
+    const exam = await Exam.findByPk(examId, {
+      include: [
+        {
+          model: Question,
+          as: "questions",
+          include: [
+            { model: Category, as: "category" },
+            { model: Option, as: "options" }
+          ]
+        }
+      ]
+    });
+    return exam ? exam.questions.map((q) => q.get({ plain: true })) : [];
+  },
+  // Add questions to an exam
+  addQuestions: async (examId, questionIds) => {
+    const t = await sequelize.transaction();
+    try {
+      const exam = await Exam.findByPk(examId, { transaction: t });
+      if (!exam) throw new Error("Exam not found");
+      const questions = await Question.findAll({
+        where: { question_id: questionIds },
+        transaction: t
+      });
+      await exam.addQuestions(questions, { transaction: t });
+      await t.commit();
+      return { message: "Questions added successfully" };
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+  },
+  // Remove questions from an exam
+  removeQuestions: async (examId, questionIds) => {
+    const t = await sequelize.transaction();
+    try {
+      const exam = await Exam.findByPk(examId, { transaction: t });
+      if (!exam) throw new Error("Exam not found");
+      const questions = await Question.findAll({
+        where: { question_id: questionIds },
+        transaction: t
+      });
+      await exam.removeQuestions(questions, { transaction: t });
+      await t.commit();
+      return { message: "Questions removed successfully" };
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
   }
 };
 ipcMain.handle("exams:getAll", async () => {
   return await ExamController.getAll();
+});
+ipcMain.handle("exams:getById", async (_, id) => {
+  return await ExamController.getById(id);
 });
 ipcMain.handle("exams:create", async (_, data) => {
   return await ExamController.create(data);
@@ -335,6 +397,15 @@ ipcMain.handle("exams:update", async (_, id, data) => {
 });
 ipcMain.handle("exams:delete", async (_, id) => {
   return await ExamController.delete(id);
+});
+ipcMain.handle("exams:getQuestions", async (_, examId) => {
+  return await ExamController.getQuestions(examId);
+});
+ipcMain.handle("exams:addQuestions", async (_, examId, questionIds) => {
+  return await ExamController.addQuestions(examId, questionIds);
+});
+ipcMain.handle("exams:removeQuestions", async (_, examId, questionIds) => {
+  return await ExamController.removeQuestions(examId, questionIds);
 });
 const __dirname = path$1.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path$1.join(__dirname, "..");
