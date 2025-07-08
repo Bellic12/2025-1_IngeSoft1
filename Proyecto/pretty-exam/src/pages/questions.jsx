@@ -25,12 +25,17 @@ const Questions = () => {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-3xl font-bold">Preguntas</h1>
+      <div>
+        <h1 className="text-3xl font-bold">Banco de Preguntas</h1>
+        <p className="text-base-content/70 mt-2 text-lg">
+          Gestiona y organiza tus preguntas de examen
+        </p>
+      </div>
       <div className="flex flex-col items-center justify-center w-full">
         {loading && <span className="loading loading-spinner loading-xl" />}
         {error && <p className="error">Error: {error}</p>}
         {!loading && !error && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
             {questions.map(question => (
               <Question
                 key={question.question_id}

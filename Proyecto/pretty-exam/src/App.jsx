@@ -15,7 +15,7 @@ function App() {
           </Route>
         </Routes>
       </HashRouter>
-      <ToastContainer theme="dark" position="bottom-right" />
+      <ToastContainer theme="dark" position="bottom-left" />
     </>
   )
 }
