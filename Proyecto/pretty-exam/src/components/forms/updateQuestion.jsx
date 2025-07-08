@@ -66,6 +66,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
       }
       return prevOptions
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type])
 
   const handleOnChangeType = event => {
