@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, Filter } from 'lucide-react'
+import { Search } from 'lucide-react'
 import Exam from '../components/exam'
 import CreateExam from '../components/forms/createExam'
 
@@ -9,7 +9,6 @@ const Exams = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('')
 
   const fetchExams = async () => {
     setLoading(true)
@@ -24,7 +23,7 @@ const Exams = () => {
     setLoading(false)
   }
 
-  // Filter exams based on search term and category
+  // Filter exams based on search term only
   useEffect(() => {
     let filtered = exams
 
@@ -36,12 +35,8 @@ const Exams = () => {
       )
     }
 
-    if (selectedCategory) {
-      filtered = filtered.filter(exam => exam.category === selectedCategory)
-    }
-
     setFilteredExams(filtered)
-  }, [exams, searchTerm, selectedCategory])
+  }, [exams, searchTerm])
 
   useEffect(() => {
     fetchExams()
@@ -49,28 +44,20 @@ const Exams = () => {
 
   return (
     <div className="flex flex-col p-4 max-h-screen overflow-hidden">
-      {/* Header with search and filter - Fixed */}
+      {/* Header with search - Fixed */}
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-4 flex-shrink-0">
         <h1 className="text-3xl font-bold">Exámenes</h1>
         
-        <div className="flex gap-4 w-full sm:w-auto">
-          {/* Search bar */}
-          <div className="relative flex-1 sm:w-80">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Buscar exámenes por título, categoría o descripción..."
-              className="input input-bordered w-full pl-10 bg-base-200"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          {/* Filter button */}
-          <button className="btn btn-outline">
-            <Filter className="w-4 h-4" />
-            Filtrar por Categoría
-          </button>
+        {/* Search bar */}
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Buscar exámenes por título o descripción..."
+            className="input input-bordered w-full pl-10 bg-base-200"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
         </div>
       </div>
 

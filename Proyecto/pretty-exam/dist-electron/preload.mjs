@@ -22,7 +22,8 @@ electron.contextBridge.exposeInMainWorld("questionAPI", {
   getAll: () => electron.ipcRenderer.invoke("questions:getAll"),
   create: (data) => electron.ipcRenderer.invoke("questions:create", data),
   update: (id, data) => electron.ipcRenderer.invoke("questions:update", id, data),
-  delete: (id) => electron.ipcRenderer.invoke("questions:delete", id)
+  delete: (id) => electron.ipcRenderer.invoke("questions:delete", id),
+  search: (filters) => electron.ipcRenderer.invoke("questions:search", filters)
 });
 electron.contextBridge.exposeInMainWorld("optionAPI", {
   getAll: () => electron.ipcRenderer.invoke("options:getAll"),
@@ -35,4 +36,11 @@ electron.contextBridge.exposeInMainWorld("examAPI", {
   create: (data) => electron.ipcRenderer.invoke("exams:create", data),
   update: (id, data) => electron.ipcRenderer.invoke("exams:update", id, data),
   delete: (id) => electron.ipcRenderer.invoke("exams:delete", id)
+});
+electron.contextBridge.exposeInMainWorld("categoryAPI", {
+  getAll: () => electron.ipcRenderer.invoke("categories:getAll"),
+  create: (data) => electron.ipcRenderer.invoke("categories:create", data),
+  update: (id, data) => electron.ipcRenderer.invoke("categories:update", id, data),
+  delete: (id) => electron.ipcRenderer.invoke("categories:delete", id),
+  nameExists: (name, excludeId) => electron.ipcRenderer.invoke("categories:nameExists", name, excludeId)
 });

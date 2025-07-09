@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('questionAPI', {
   create: data => ipcRenderer.invoke('questions:create', data),
   update: (id, data) => ipcRenderer.invoke('questions:update', id, data),
   delete: id => ipcRenderer.invoke('questions:delete', id),
+  search: filters => ipcRenderer.invoke('questions:search', filters),
 })
 
 // Option API
@@ -42,4 +43,13 @@ contextBridge.exposeInMainWorld('examAPI', {
   create: data => ipcRenderer.invoke('exams:create', data),
   update: (id, data) => ipcRenderer.invoke('exams:update', id, data),
   delete: id => ipcRenderer.invoke('exams:delete', id),
+})
+
+// Category API
+contextBridge.exposeInMainWorld('categoryAPI', {
+  getAll: () => ipcRenderer.invoke('categories:getAll'),
+  create: data => ipcRenderer.invoke('categories:create', data),
+  update: (id, data) => ipcRenderer.invoke('categories:update', id, data),
+  delete: id => ipcRenderer.invoke('categories:delete', id),
+  nameExists: (name, excludeId) => ipcRenderer.invoke('categories:nameExists', name, excludeId),
 })
