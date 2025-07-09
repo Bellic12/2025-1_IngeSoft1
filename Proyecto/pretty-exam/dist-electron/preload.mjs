@@ -22,11 +22,29 @@ electron.contextBridge.exposeInMainWorld("questionAPI", {
   getAll: () => electron.ipcRenderer.invoke("questions:getAll"),
   create: (data) => electron.ipcRenderer.invoke("questions:create", data),
   update: (id, data) => electron.ipcRenderer.invoke("questions:update", id, data),
-  delete: (id) => electron.ipcRenderer.invoke("questions:delete", id)
+  delete: (id) => electron.ipcRenderer.invoke("questions:delete", id),
+  search: (filters) => electron.ipcRenderer.invoke("questions:search", filters)
 });
 electron.contextBridge.exposeInMainWorld("optionAPI", {
   getAll: () => electron.ipcRenderer.invoke("options:getAll"),
   create: (data) => electron.ipcRenderer.invoke("options:create", data),
   update: (id, data) => electron.ipcRenderer.invoke("options:update", id, data),
   delete: (id) => electron.ipcRenderer.invoke("options:delete", id)
+});
+electron.contextBridge.exposeInMainWorld("examAPI", {
+  getAll: () => electron.ipcRenderer.invoke("exams:getAll"),
+  getById: (id) => electron.ipcRenderer.invoke("exams:getById", id),
+  create: (data) => electron.ipcRenderer.invoke("exams:create", data),
+  update: (id, data) => electron.ipcRenderer.invoke("exams:update", id, data),
+  delete: (id) => electron.ipcRenderer.invoke("exams:delete", id),
+  getQuestions: (examId) => electron.ipcRenderer.invoke("exams:getQuestions", examId),
+  addQuestions: (examId, questionIds) => electron.ipcRenderer.invoke("exams:addQuestions", examId, questionIds),
+  removeQuestions: (examId, questionIds) => electron.ipcRenderer.invoke("exams:removeQuestions", examId, questionIds)
+});
+electron.contextBridge.exposeInMainWorld("categoryAPI", {
+  getAll: () => electron.ipcRenderer.invoke("categories:getAll"),
+  create: (data) => electron.ipcRenderer.invoke("categories:create", data),
+  update: (id, data) => electron.ipcRenderer.invoke("categories:update", id, data),
+  delete: (id) => electron.ipcRenderer.invoke("categories:delete", id),
+  nameExists: (name, excludeId) => electron.ipcRenderer.invoke("categories:nameExists", name, excludeId)
 });

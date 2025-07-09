@@ -2,6 +2,7 @@ import { DataTypes } from 'sequelize'
 import sequelize from '../config/database'
 import Category from './category.model'
 import Option from './option.model'
+import Exam from './exam.model'
 
 const Question = sequelize.define(
   'Question',
@@ -11,16 +12,8 @@ const Question = sequelize.define(
     type: { type: DataTypes.STRING, allowNull: false },
     category_id: DataTypes.INTEGER,
     source: { type: DataTypes.STRING, defaultValue: 'manual', allowNull: true },
-    created_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-      allowNull: false,
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-      allowNull: false,
-    },
+    created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, allowNull: false },
+    updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, allowNull: false },
   },
   {
     tableName: 'Question',
@@ -37,6 +30,14 @@ Question.associate = () => {
   Question.belongsTo(Category, {
     foreignKey: 'category_id',
     as: 'category',
+  })
+  Question.belongsToMany(Exam, {
+    through: 'ExamQuestion',
+    foreignKey: 'question_id',
+    otherKey: 'exam_id',
+    timestamps: false,
+    as: 'exams',
+    onDelete: 'CASCADE',
   })
 }
 

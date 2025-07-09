@@ -35,7 +35,7 @@ const Layout = () => {
               <li>
                 <Link
                   to="/"
-                  className={`w-full btn btn-outline btn-primary justify-center ${location.pathname === '/' ? 'active' : ''}`}
+                  className={`w-full btn btn-outline btn-primary justify-center ${location.pathname === '/' || location.pathname.startsWith('/exam') ? 'active' : ''}`}
                   onClick={() => setSidebarOpen(false)}
                 >
                   <BookOpen className="w-5 h-5 mr-2" />
