@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Search, X, Plus, Sparkles } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
+import { X, Plus, Sparkles } from 'lucide-react'
 import { toast } from 'react-toastify'
 import CreateQuestion from './createQuestion'
 
@@ -11,6 +11,7 @@ const AddQuestionsModal = ({ examId, onClose, onQuestionsAdded }) => {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState('')
   const [showCreateQuestion, setShowCreateQuestion] = useState(false)
+  const searchInputRef = useRef(null)
 
   const fetchAllQuestions = async () => {
     try {
@@ -41,6 +42,21 @@ const AddQuestionsModal = ({ examId, onClose, onQuestionsAdded }) => {
 
   useEffect(() => {
     fetchData()
+  }, [])
+
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = event => {
+      if (event.ctrlKey && event.key === 'k') {
+        event.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [])
 
   // Filter questions based on search term and type
@@ -137,16 +153,34 @@ const AddQuestionsModal = ({ examId, onClose, onQuestionsAdded }) => {
         <div className="mb-4">
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Search */}
-            <div className="relative flex-1">
+            <label className="input flex-1">
+              <svg
+                className="h-[1em] opacity-50"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+              >
+                <g
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  strokeWidth="2.5"
+                  fill="none"
+                  stroke="currentColor"
+                >
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.3-4.3"></path>
+                </g>
+              </svg>
               <input
-                type="text"
+                type="search"
+                className="grow"
                 placeholder="Buscar preguntas..."
-                className="input input-bordered w-full pl-10 bg-base-200"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
+                ref={searchInputRef}
               />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white w-4 h-4" />
-            </div>
+              <kbd className="kbd kbd-sm">Ctrl</kbd>
+              <kbd className="kbd kbd-sm">K</kbd>
+            </label>
 
             {/* Type filter dropdown */}
             <select

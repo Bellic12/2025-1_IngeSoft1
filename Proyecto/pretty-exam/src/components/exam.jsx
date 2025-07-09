@@ -21,14 +21,14 @@ const Exam = ({ exam, fetchExams }) => {
     navigate(`/exam/${exam.exam_id}`)
   }
 
-  const handleStartSimulation = (e) => {
+  const handleStartSimulation = e => {
     e.stopPropagation()
     // TODO: Implementar lógica para iniciar simulación
     console.log('Iniciar simulación del examen:', exam.exam_id)
   }
 
   return (
-    <div 
+    <div
       className="card bg-base-200 shadow-xl border border-base-300 hover:shadow-2xl transition-shadow duration-300 cursor-pointer"
       onClick={handleExamClick}
     >
@@ -38,7 +38,7 @@ const Exam = ({ exam, fetchExams }) => {
           <div className="flex-1">
             <h2 className="card-title text-xl font-bold text-base-content mb-2">{exam?.name}</h2>
           </div>
-          
+
           {/* Action buttons */}
           <div className="flex gap-2" onClick={e => e.stopPropagation()}>
             <button

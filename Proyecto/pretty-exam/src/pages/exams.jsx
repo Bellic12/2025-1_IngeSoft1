@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import { Search } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
 import Exam from '../components/exam'
 import CreateExam from '../components/forms/createExam'
 
@@ -9,6 +8,7 @@ const Exams = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const searchInputRef = useRef(null)
 
   const fetchExams = async () => {
     setLoading(true)
@@ -51,6 +51,21 @@ const Exams = () => {
     fetchExams()
   }, [])
 
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = event => {
+      if (event.ctrlKey && event.key === 'k') {
+        event.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
+
   return (
     <div className="flex flex-col p-4 max-h-screen overflow-hidden">
       {/* Header with search and filter - Fixed */}
@@ -59,16 +74,34 @@ const Exams = () => {
 
         <div className="flex gap-4 w-full sm:w-auto">
           {/* Search bar */}
-          <div className="relative flex-1 sm:w-80">
+          <label className="input flex-1 sm:w-80">
+            <svg
+              className="h-[1em] opacity-50"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                strokeWidth="2.5"
+                fill="none"
+                stroke="currentColor"
+              >
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.3-4.3"></path>
+              </g>
+            </svg>
             <input
-              type="text"
+              type="search"
+              className="grow"
               placeholder="Buscar exámenes por título o descripción..."
-              className="input input-bordered w-full pl-10 bg-base-200"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
+              ref={searchInputRef}
             />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white w-4 h-4" />
-          </div>
+            <kbd className="kbd kbd-sm">Ctrl</kbd>
+            <kbd className="kbd kbd-sm">K</kbd>
+          </label>
         </div>
       </div>
 
