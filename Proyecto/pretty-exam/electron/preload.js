@@ -40,9 +40,15 @@ contextBridge.exposeInMainWorld('optionAPI', {
 // Exam API
 contextBridge.exposeInMainWorld('examAPI', {
   getAll: () => ipcRenderer.invoke('exams:getAll'),
+  getById: id => ipcRenderer.invoke('exams:getById', id),
   create: data => ipcRenderer.invoke('exams:create', data),
   update: (id, data) => ipcRenderer.invoke('exams:update', id, data),
   delete: id => ipcRenderer.invoke('exams:delete', id),
+  getQuestions: examId => ipcRenderer.invoke('exams:getQuestions', examId),
+  addQuestions: (examId, questionIds) =>
+    ipcRenderer.invoke('exams:addQuestions', examId, questionIds),
+  removeQuestions: (examId, questionIds) =>
+    ipcRenderer.invoke('exams:removeQuestions', examId, questionIds),
 })
 
 // Category API

@@ -4,11 +4,11 @@ import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'react-toastify'
 
-const CreateExam = ({ fetchExams }) => {
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [durationMinutes, setDuration] = useState('')
-  const [loading, setLoading] = useState(false)
+  const CreateExam = ({ fetchExams }) => {
+    const [name, setName] = useState('')
+    const [description, setDescription] = useState('')
+    const [durationMinutes, setDuration] = useState('')
+    const [loading, setLoading] = useState(false)
 
   const handleOpenModal = () => {
     resetForm()
@@ -131,11 +131,11 @@ const CreateExam = ({ fetchExams }) => {
           {/* Duración */}
           <div className="form-control flex flex-col gap-2">
             <label className="label">
-              <span className="label-text">Duración</span>
+              <span className="label-text">Duración (minutos)</span>
             </label>
             <input
               type="number"
-              placeholder="Ej: 60 minutos, 1 hora, etc."
+              placeholder="Ej: 60"
               className="input input-bordered w-full bg-base-100"
               value={durationMinutes}
               onChange={e => setDuration(e.target.value)}

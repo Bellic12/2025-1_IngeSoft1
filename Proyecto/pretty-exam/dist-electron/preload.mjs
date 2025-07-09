@@ -33,9 +33,13 @@ electron.contextBridge.exposeInMainWorld("optionAPI", {
 });
 electron.contextBridge.exposeInMainWorld("examAPI", {
   getAll: () => electron.ipcRenderer.invoke("exams:getAll"),
+  getById: (id) => electron.ipcRenderer.invoke("exams:getById", id),
   create: (data) => electron.ipcRenderer.invoke("exams:create", data),
   update: (id, data) => electron.ipcRenderer.invoke("exams:update", id, data),
-  delete: (id) => electron.ipcRenderer.invoke("exams:delete", id)
+  delete: (id) => electron.ipcRenderer.invoke("exams:delete", id),
+  getQuestions: (examId) => electron.ipcRenderer.invoke("exams:getQuestions", examId),
+  addQuestions: (examId, questionIds) => electron.ipcRenderer.invoke("exams:addQuestions", examId, questionIds),
+  removeQuestions: (examId, questionIds) => electron.ipcRenderer.invoke("exams:removeQuestions", examId, questionIds)
 });
 electron.contextBridge.exposeInMainWorld("categoryAPI", {
   getAll: () => electron.ipcRenderer.invoke("categories:getAll"),
