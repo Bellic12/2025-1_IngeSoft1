@@ -1,7 +1,8 @@
-import { Pencil } from 'lucide-react'
+import { Pencil, Tag, Edit2 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
 import QuestionFactory from '../../factories/QuestionFactory'
+import CategoryFilter from '../CategoryFilter'
 
 const getInitialOptions = (type, optionsFromQuestion) => {
   if (optionsFromQuestion && optionsFromQuestion.length > 0) {
@@ -23,10 +24,13 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
   const [text, setText] = useState('')
   const [type, setType] = useState('multiple_choice')
   const [options, setOptions] = useState([])
-  // eslint-disable-next-line no-unused-vars
-  const [categoryId, setCategoryId] = useState(1)
+  const [categoryId, setCategoryId] = useState(null)
+  const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(false)
   const [formError, setFormError] = useState('')
+  const [showCategorySelector, setShowCategorySelector] = useState(false)
+  const [editingCategoryId, setEditingCategoryId] = useState(null)
+  const [modalWasOpen, setModalWasOpen] = useState(false)
 
   const originalState = useRef({})
 
@@ -34,14 +38,30 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
     if (question) {
       setText(question.text || '')
       setType(question.type || 'multiple_choice')
+      setCategoryId(question.category_id || null)
       setOptions(getInitialOptions(question.type, question.options))
       originalState.current = {
         text: question.text || '',
         type: question.type || 'multiple_choice',
+        categoryId: question.category_id || null,
         options: getInitialOptions(question.type, question.options),
       }
     }
   }, [question])
+
+  // Fetch categories
+  const fetchCategories = async () => {
+    try {
+      const result = await window.categoryAPI.getAll()
+      setCategories(result)
+    } catch (err) {
+      console.error('Error fetching categories:', err)
+    }
+  }
+
+  useEffect(() => {
+    fetchCategories()
+  }, [])
 
   useEffect(() => {
     if (!question) return
@@ -105,6 +125,12 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
   const handleSubmit = async event => {
     event.preventDefault()
     setFormError('')
+    
+    if (!categoryId) {
+      setFormError('Debes seleccionar una categoría')
+      return
+    }
+    
     try {
       const questionObj = QuestionFactory.createQuestion(type, {
         text,
@@ -185,19 +211,71 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
               required
             />
           </div>
-          {/* Type */}
-          <div className="form-control flex flex-col gap-2">
-            <label className="label">
-              <span className="label-text">Tipo de pregunta</span>
-            </label>
-            <select
-              className="select select-bordered w-full"
-              value={type}
-              onChange={handleOnChangeType}
-            >
-              <option value="multiple_choice">Opción múltiple</option>
-              <option value="true_false">Verdadero/Falso</option>
-            </select>
+          {/* Type and Category row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Type */}
+            <div className="form-control flex flex-col gap-2">
+              <label className="label">
+                <span className="label-text">Tipo de pregunta</span>
+              </label>
+              <select
+                className="select select-bordered w-full"
+                value={type}
+                onChange={handleOnChangeType}
+              >
+                <option value="multiple_choice">Opción múltiple</option>
+                <option value="true_false">Verdadero/Falso</option>
+              </select>
+            </div>
+
+            {/* Category */}
+            <div className="form-control flex flex-col gap-2">
+              <label className="label">
+                <span className="label-text">Categoría</span>
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className={`btn flex-1 justify-start ${categoryId ? 'btn-outline' : 'btn-outline btn-error'}`}
+                  onClick={() => {
+                    setModalWasOpen(true)
+                    document.getElementById('modal_update_question' + question.question_id).close()
+                    setTimeout(() => setShowCategorySelector(true), 100)
+                  }}
+                >
+                  <Tag className="w-4 h-4" />
+                  {categoryId 
+                    ? categories.find(c => c.category_id === categoryId)?.name || 'Categoría seleccionada'
+                    : 'Seleccionar categoría'
+                  }
+                </button>
+                {categoryId && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-square"
+                      onClick={() => {
+                        setEditingCategoryId(categoryId)
+                        setModalWasOpen(true)
+                        document.getElementById('modal_update_question' + question.question_id).close()
+                        setTimeout(() => setShowCategorySelector(true), 100)
+                      }}
+                      title="Editar categoría"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-square"
+                      onClick={() => setCategoryId(null)}
+                      title="Limpiar categoría"
+                    >
+                      ✕
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
           {/* Options */}
           <div className="form-control flex flex-col gap-2">
@@ -287,6 +365,40 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
           </button>
         </form>
       </dialog>
+
+      {/* Category Selector Modal */}
+      <CategoryFilter
+        isOpen={showCategorySelector}
+        onClose={() => {
+          setShowCategorySelector(false)
+          setEditingCategoryId(null)
+          // Reopen the main modal if it was open before
+          if (modalWasOpen) {
+            setModalWasOpen(false)
+            setTimeout(() => {
+              document.getElementById('modal_update_question' + question.question_id).showModal()
+            }, 100)
+          }
+        }}
+        selectedCategories={categoryId ? [categoryId] : []}
+        onCategorySelect={(categories) => {
+          setCategoryId(categories[0] || null)
+          setShowCategorySelector(false)
+          setEditingCategoryId(null)
+          // Refresh categories to get updated names
+          fetchCategories()
+          // Reopen the main modal if it was open before
+          if (modalWasOpen) {
+            setModalWasOpen(false)
+            setTimeout(() => {
+              document.getElementById('modal_update_question' + question.question_id).showModal()
+            }, 100)
+          }
+        }}
+        singleSelect={true}
+        title="Seleccionar Categoría"
+        editingCategoryId={editingCategoryId}
+      />
     </>
   )
 }

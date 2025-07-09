@@ -46,6 +46,7 @@ const Exams = () => {
 
     setFilteredExams(filtered)
   }, [exams, searchTerm])
+  }, [exams, searchTerm])
 
   useEffect(() => {
     fetchExams()
@@ -68,7 +69,7 @@ const Exams = () => {
 
   return (
     <div className="flex flex-col p-4 max-h-screen overflow-hidden">
-      {/* Header with search and filter - Fixed */}
+      {/* Header with search - Fixed */}
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-4 flex-shrink-0">
         <h1 className="text-3xl font-bold">Exámenes</h1>
 

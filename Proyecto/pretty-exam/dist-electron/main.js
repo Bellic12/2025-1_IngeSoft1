@@ -1,6 +1,6 @@
 import { ipcMain, app, BrowserWindow } from "electron";
 import { fileURLToPath } from "node:url";
-import { Sequelize, DataTypes } from "sequelize";
+import { Sequelize, DataTypes, Op } from "sequelize";
 import path, { join } from "path";
 import path$1 from "node:path";
 const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
@@ -215,6 +215,54 @@ const QuestionController = {
   },
   delete: async (id) => {
     return await Question.destroy({ where: { question_id: id } });
+  },
+  // Search questions with filters
+  search: async (filters = {}) => {
+    console.log("QuestionController.search called with filters:", filters);
+    const { searchTerm, categoryIds } = filters;
+    let whereClause = {};
+    if (categoryIds && categoryIds.length > 0) {
+      whereClause.category_id = {
+        [Op.in]: categoryIds
+      };
+      console.log("Added category filter:", whereClause.category_id);
+    }
+    let searchConditions = [];
+    if (searchTerm && searchTerm.trim()) {
+      searchConditions = [
+        // Search in question text
+        { text: { [Op.iLike]: `%${searchTerm.trim()}%` } },
+        // Search in category name
+        { "$category.name$": { [Op.iLike]: `%${searchTerm.trim()}%` } }
+      ];
+      console.log("Added search conditions for term:", searchTerm.trim());
+    }
+    if (searchConditions.length > 0) {
+      if (Object.keys(whereClause).length > 0) {
+        whereClause = {
+          [Op.and]: [
+            whereClause,
+            { [Op.or]: searchConditions }
+          ]
+        };
+      } else {
+        whereClause = {
+          [Op.or]: searchConditions
+        };
+      }
+    }
+    console.log("Final where clause:", JSON.stringify(whereClause, null, 2));
+    const questions = await Question.findAll({
+      where: whereClause,
+      include: [
+        { model: Option, as: "options" },
+        { model: Category, as: "category" }
+      ],
+      order: [["question_id", "DESC"]]
+      // Most recent first
+    });
+    console.log(`Found ${questions.length} questions`);
+    return questions.map((q) => q.get({ plain: true }));
   }
 };
 ipcMain.handle("questions:getAll", async () => {
@@ -228,6 +276,9 @@ ipcMain.handle("questions:update", async (_, id, data) => {
 });
 ipcMain.handle("questions:delete", async (_, id) => {
   return await QuestionController.delete(id);
+});
+ipcMain.handle("questions:search", async (_, filters) => {
+  return await QuestionController.search(filters);
 });
 const OptionController = {
   getAll: async () => {
@@ -254,6 +305,88 @@ ipcMain.handle("options:update", async (_, id, data) => {
 });
 ipcMain.handle("options:delete", async (_, id) => {
   return await OptionController.delete(id);
+});
+const CategoryController = {
+  // Get all categories
+  getAll: async () => {
+    const categories = await Category.findAll({
+      order: [["name", "ASC"]]
+    });
+    return categories.map((c) => c.get({ plain: true }));
+  },
+  // Create a new category
+  create: async (data) => {
+    try {
+      const category = await Category.create({
+        name: data.name
+      });
+      return category.get({ plain: true });
+    } catch (error) {
+      if (error.name === "SequelizeUniqueConstraintError") {
+        throw new Error("Category name already exists");
+      }
+      throw error;
+    }
+  },
+  // Update an existing category
+  update: async (id, data) => {
+    try {
+      const [updatedRowsCount] = await Category.update(
+        { name: data.name },
+        { where: { category_id: id } }
+      );
+      if (updatedRowsCount === 0) {
+        throw new Error("Category not found");
+      }
+      const updatedCategory = await Category.findByPk(id);
+      return updatedCategory.get({ plain: true });
+    } catch (error) {
+      if (error.name === "SequelizeUniqueConstraintError") {
+        throw new Error("Category name already exists");
+      }
+      throw error;
+    }
+  },
+  // Delete a category
+  delete: async (id) => {
+    const questionCount = await Question.count({
+      where: { category_id: id }
+    });
+    if (questionCount > 0) {
+      throw new Error("Cannot delete category with associated questions");
+    }
+    const deletedRowsCount = await Category.destroy({
+      where: { category_id: id }
+    });
+    if (deletedRowsCount === 0) {
+      throw new Error("Category not found");
+    }
+    return true;
+  },
+  // Check if category name exists
+  nameExists: async (name, excludeId = null) => {
+    const whereClause = { name };
+    if (excludeId) {
+      whereClause.category_id = { [Category.sequelize.Op.ne]: excludeId };
+    }
+    const category = await Category.findOne({ where: whereClause });
+    return !!category;
+  }
+};
+ipcMain.handle("categories:getAll", async () => {
+  return await CategoryController.getAll();
+});
+ipcMain.handle("categories:create", async (_, data) => {
+  return await CategoryController.create(data);
+});
+ipcMain.handle("categories:update", async (_, id, data) => {
+  return await CategoryController.update(id, data);
+});
+ipcMain.handle("categories:delete", async (_, id) => {
+  return await CategoryController.delete(id);
+});
+ipcMain.handle("categories:nameExists", async (_, name, excludeId = null) => {
+  return await CategoryController.nameExists(name, excludeId);
 });
 const ExamController = {
   // Get all exams with associated questions
