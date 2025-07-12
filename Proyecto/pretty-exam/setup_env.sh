@@ -7,7 +7,7 @@ set -e
 
 NODE_MIN_VERSION="18.0.0"
 DB_COMMAND="sqlite3"
-DB_FILE="pretty-exam.db"
+DB_FILE="pretty_exam.db"
 SCHEMA="../../Documentacion/Proyecto/schema.sql"
 SEED="../../Documentacion/Proyecto/seed_data.sql"
 
