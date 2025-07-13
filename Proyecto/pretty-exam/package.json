@@ -9,7 +9,8 @@
     "rebuild": "electron-rebuild",
     "build": "vite build && npm run rebuild && electron-builder",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "setup-dev": "npm install && npm run dev"
   },
   "dependencies": {
     "@rollup/plugin-commonjs": "^28.0.6",
