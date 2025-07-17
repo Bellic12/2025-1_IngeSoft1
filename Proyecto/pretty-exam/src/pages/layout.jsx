@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { BookOpen, HelpCircle, Menu, X } from 'lucide-react'
 import { useState } from 'react'
+import { ExamSimProvider } from '../components/examSimContext'
 
 const Layout = () => {
   const location = useLocation()
@@ -66,7 +67,9 @@ const Layout = () => {
 
         {/* Main content */}
         <div className="col-span-12 lg:col-span-10 p-6 pt-16 lg:pt-6">
-          <Outlet />
+          <ExamSimProvider>
+            <Outlet />
+          </ExamSimProvider>
         </div>
       </div>
     </>

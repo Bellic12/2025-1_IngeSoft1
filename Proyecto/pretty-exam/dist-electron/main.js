@@ -120,10 +120,58 @@ Question.associate = () => {
     onDelete: "CASCADE"
   });
 };
+const UserAnswer = sequelize.define(
+  "UserAnswer",
+  {
+    result_id: { type: DataTypes.INTEGER, primaryKey: true, allowNull: false },
+    question_id: { type: DataTypes.INTEGER, primaryKey: true, allowNull: false },
+    option_id: { type: DataTypes.INTEGER, allowNull: false },
+    is_correct: { type: DataTypes.BOOLEAN, allowNull: false }
+  },
+  {
+    tableName: "UserAnswer",
+    timestamps: false
+  }
+);
+UserAnswer.associate = () => {
+  UserAnswer.belongsTo(Result, { foreignKey: "result_id", as: "result", onDelete: "CASCADE" });
+  UserAnswer.belongsTo(Question, { foreignKey: "question_id", as: "question", onDelete: "CASCADE" });
+  UserAnswer.belongsTo(Option, { foreignKey: "option_id", as: "option", onDelete: "CASCADE" });
+};
+const Result = sequelize.define(
+  "Result",
+  {
+    result_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    exam_id: { type: DataTypes.INTEGER, allowNull: false },
+    score: { type: DataTypes.INTEGER, allowNull: false, validate: { min: 0, max: 100 } },
+    correct_answers: { type: DataTypes.INTEGER, allowNull: false },
+    incorrect_answers: { type: DataTypes.INTEGER, allowNull: false },
+    time_used: { type: DataTypes.INTEGER, allowNull: false },
+    taken_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, allowNull: false }
+  },
+  {
+    tableName: "Result",
+    timestamps: false
+  }
+);
+Result.associate = () => {
+  Result.belongsTo(Exam, {
+    foreignKey: "exam_id",
+    as: "exam",
+    onDelete: "CASCADE"
+  });
+  Result.hasMany(UserAnswer, {
+    foreignKey: "result_id",
+    as: "userAnswers",
+    onDelete: "CASCADE"
+  });
+};
 Question.associate && Question.associate();
 Option.associate && Option.associate();
 Category.associate && Category.associate();
 Exam.associate && Exam.associate();
+Result.associate && Result.associate();
+UserAnswer.associate && UserAnswer.associate();
 const QuestionController = {
   // Get questions with options and category
   getAll: async () => {
@@ -134,6 +182,20 @@ const QuestionController = {
       ]
     });
     return questions.map((q) => q.get({ plain: true }));
+  },
+  // Get a question by ID with options and category
+  getById: async (id) => {
+    const question = await Question.findOne({
+      where: { question_id: id },
+      include: [
+        { model: Option, as: "options" },
+        { model: Category, as: "category" }
+      ]
+    });
+    if (!question) {
+      throw new Error(`Question with ID ${id} not found`);
+    }
+    return question.get({ plain: true });
   },
   // Create a new question with options
   create: async (data) => {
@@ -213,6 +275,7 @@ const QuestionController = {
       throw err;
     }
   },
+  // Delete a question by ID
   delete: async (id) => {
     return await Question.destroy({ where: { question_id: id } });
   },
@@ -283,6 +346,9 @@ ipcMain.handle("questions:search", async (_, filters) => {
 const OptionController = {
   getAll: async () => {
     return await Option.findAll();
+  },
+  getById: async (id) => {
+    return await Option.findOne({ where: { option_id: id } });
   },
   create: async (data) => {
     return await Option.create(data);
@@ -396,10 +462,16 @@ const ExamController = {
     });
     return exams.map((e) => e.get({ plain: true }));
   },
-  // Get an exam by ID with associated questions
+  // Get an exam by ID with associated questions and their options
   getById: async (id) => {
     const exam = await Exam.findByPk(id, {
-      include: [{ model: Question, as: "questions" }]
+      include: [
+        {
+          model: Question,
+          as: "questions",
+          include: [{ model: Option, as: "options" }]
+        }
+      ]
     });
     return exam ? exam.get({ plain: true }) : null;
   },
@@ -516,6 +588,190 @@ const ExamController = {
     }
   }
 };
+const ResultController = {
+  getAll: async () => {
+    const results = await Result.findAll({
+      include: [
+        { model: Exam, as: "exam" },
+        { model: UserAnswer, as: "userAnswers", include: [{ model: Option, as: "option" }] }
+      ]
+    });
+    return results.map((e) => e.get({ plain: true }));
+  },
+  getById: async (id) => {
+    const result = await Result.findByPk(id, {
+      include: [
+        { model: Exam, as: "exam" },
+        { model: UserAnswer, as: "userAnswers", include: [{ model: Option, as: "option" }] }
+      ]
+    });
+    return result ? result.get({ plain: true }) : null;
+  },
+  create: async (data) => {
+    const result = await Result.create({
+      exam_id: data.exam_id,
+      score: data.score,
+      correct_answers: data.correct_answers,
+      incorrect_answers: data.incorrect_answers,
+      time_used: data.time_used,
+      taken_at: /* @__PURE__ */ new Date()
+    });
+    return result.get({ plain: true });
+  },
+  delete: async (id) => {
+    return await Result.destroy({ where: { result_id: id } });
+  }
+};
+function boldMarkdownToHtml(text) {
+  if (!text) return text;
+  return text.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>");
+}
+const apiKey = "AIzaSyBbsKswX36NvOR84J85kipxK5pMxNnbZls";
+const AIController = {
+  explainQuestion: async (questionId, optionSelectedId) => {
+    var _a, _b, _c, _d, _e, _f;
+    let option = {};
+    let prompt = "";
+    if (optionSelectedId === void 0 || optionSelectedId === null) {
+      option.text = "Pregunta no respondida";
+      const question = await QuestionController.getById(questionId);
+      if (!question) throw new Error("Question not found");
+      const correctOption = question.options.find((opt) => opt.is_correct);
+      prompt = `
+        No saludes, no te presentes, no digas que eres una IA.
+        Actúa como un profesor experto en el tema.
+        El estudiante no respondió la siguiente pregunta de un examen tipo test.
+        No uses latex, escribe símbolos matemáticos de manera simple, usa texto plano para fórmulas.
+
+        Pregunta: ${question.text}
+        Opciones: 
+        ${question.options.map((opt, idx) => `  ${String.fromCharCode(65 + idx)}. ${opt.text}`).join("\n")}
+        Respuesta correcta: ${correctOption ? correctOption.text : "No disponible"}
+
+        Explica de manera clara y sencilla por qué esta es la respuesta correcta para que el estudiante comprenda el razonamiento.
+        También explica por qué las demás respuestas no son correctas.
+        Responde en español, de forma muy breve y didáctica.
+      `;
+    } else {
+      option = await OptionController.getById(optionSelectedId);
+      const question = await QuestionController.getById(questionId);
+      if (!question || !option) throw new Error("Question or option not found");
+      prompt = `
+        No saludes, no te presentes, no digas que eres una IA.
+        Actúa como un profesor experto en el tema.
+        No uses latex, escribe símbolos matemáticos de manera simple, usa texto plano para fórmulas.
+        Opciones: 
+        ${question.options.map((opt, idx) => `  ${String.fromCharCode(65 + idx)}. ${opt.text}`).join("\n")}
+        Respuesta seleccionada: ${option.text}
+
+        Explica si la respuesta es correcta o incorrecta, y justifica la explicación para que el estudiante comprenda el razonamiento.
+        También explica por qué las demás respuestas no son correctas.
+        Responde en español, de forma muy breve y didáctica.
+      `;
+    }
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const body = {
+      contents: [
+        {
+          parts: [{ text: prompt }]
+        }
+      ]
+    };
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.statusText}`);
+      }
+      const data = await response.json();
+      let text = ((_f = (_e = (_d = (_c = (_b = (_a = data == null ? void 0 : data.candidates) == null ? void 0 : _a[0]) == null ? void 0 : _b.content) == null ? void 0 : _c.parts) == null ? void 0 : _d[0]) == null ? void 0 : _e.text) == null ? void 0 : _f.trim()) || "No se pudo obtener explicación de la IA.";
+      text = boldMarkdownToHtml(text);
+      return text;
+    } catch (err) {
+      return `Error al comunicarse con Gemini: ${err.message}`;
+    }
+  },
+  // Método para retroalimentación del examen
+  feedbackExam: async (examId, resultId) => {
+    var _a, _b, _c, _d, _e, _f;
+    const exam = await ExamController.getById(examId);
+    console.log(exam);
+    const result = await ResultController.getById(resultId);
+    if (!exam || !result) throw new Error("Exam or result not found");
+    const userAnswers = Array.isArray(result.userAnswers) ? result.userAnswers : [];
+    const correctCount = result.correct_answers;
+    const incorrectCount = result.incorrect_answers;
+    let resumen = "";
+    const questions = Array.isArray(exam.questions) ? exam.questions : [];
+    questions.forEach((q, idx) => {
+      var _a2;
+      const options = Array.isArray(q.options) ? q.options : [];
+      const userAnswer = userAnswers.find((ua) => ua.question_id === q.question_id);
+      const correctOpt = options.find((opt) => opt.is_correct);
+      resumen += `Pregunta ${idx + 1}: ${q.text || "Sin texto"}
+`;
+      resumen += `Opciones: ${options.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt.text || "Sin texto"}${opt.is_correct ? " (correcta)" : ""}`).join(" ")}
+`;
+      const opcionEscogida = userAnswer ? ((_a2 = options.find((opt) => opt.option_id === userAnswer.option_id)) == null ? void 0 : _a2.text) || "Sin texto" : "No respondida";
+      resumen += `Opción escogida: ${opcionEscogida}
+`;
+      resumen += `Respuesta correcta: ${correctOpt ? correctOpt.text || "Sin texto" : "No disponible"}
+
+`;
+    });
+    const prompt = `No saludes, no te presentes.
+      no digas que eres una IA.
+      Actúa como un profesor experto en el tema y en dar retroalimentación de exámenes.
+      
+
+Resumen del desempeño:
+- Respuestas correctas: ${correctCount}
+- Respuestas incorrectas: ${incorrectCount}
+
+${resumen}
+
+      Por favor, da una retroalimentación breve y didáctica sobre el desempeño general del estudiante en este examen, sin explicar cada pregunta.
+      Indica en qué aspectos puede mejorar y qué cosas hizo bien.`;
+    console.log(prompt);
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const body = {
+      contents: [
+        {
+          parts: [{ text: prompt }]
+        }
+      ]
+    };
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.statusText}`);
+      }
+      const data = await response.json();
+      let text = ((_f = (_e = (_d = (_c = (_b = (_a = data == null ? void 0 : data.candidates) == null ? void 0 : _a[0]) == null ? void 0 : _b.content) == null ? void 0 : _c.parts) == null ? void 0 : _d[0]) == null ? void 0 : _e.text) == null ? void 0 : _f.trim()) || "No se pudo obtener retroalimentación de la IA.";
+      text = boldMarkdownToHtml(text);
+      return text;
+    } catch (err) {
+      return `Error al comunicarse con Gemini: ${err.message}`;
+    }
+  }
+};
+ipcMain.handle("ai:explainQuestion", async (_, questionId, optionSelectedId) => {
+  return await AIController.explainQuestion(questionId, optionSelectedId);
+});
+ipcMain.handle("ai:feedbackExam", async (_, examId, resultId) => {
+  return await AIController.feedbackExam(examId, resultId);
+});
 ipcMain.handle("exams:getAll", async () => {
   return await ExamController.getAll();
 });
@@ -539,6 +795,55 @@ ipcMain.handle("exams:addQuestions", async (_, examId, questionIds) => {
 });
 ipcMain.handle("exams:removeQuestions", async (_, examId, questionIds) => {
   return await ExamController.removeQuestions(examId, questionIds);
+});
+ipcMain.handle("results:getAll", async () => {
+  return await ResultController.getAll();
+});
+ipcMain.handle("results:getById", async (event, id) => {
+  return await ResultController.getById(id);
+});
+ipcMain.handle("results:create", async (event, data) => {
+  return await ResultController.create(data);
+});
+ipcMain.handle("results:delete", async (event, id) => {
+  return await ResultController.delete(id);
+});
+const UserAnswerController = {
+  getAll: async () => {
+    return await UserAnswer.findAll({ include: ["result", "question", "option"] });
+  },
+  getById: async (resultId, questionId) => {
+    return await UserAnswer.findOne({
+      where: { result_id: resultId, question_id: questionId },
+      include: ["result", "question", "option"]
+    });
+  },
+  create: async (data) => {
+    const option = await Option.findByPk(data.optionId);
+    if (!option) throw new Error("Option not found");
+    const isCorrect = !!option.is_correct;
+    return await UserAnswer.create({
+      result_id: data.resultId,
+      question_id: data.questionId,
+      option_id: data.optionId,
+      is_correct: isCorrect
+    });
+  },
+  delete: async (resultId, questionId) => {
+    return await UserAnswer.destroy({ where: { result_id: resultId, question_id: questionId } });
+  }
+};
+ipcMain.handle("userAnswers:getAll", async () => {
+  return await UserAnswerController.getAll();
+});
+ipcMain.handle("userAnswers:getById", async (event, resultId, questionId) => {
+  return await UserAnswerController.getById(resultId, questionId);
+});
+ipcMain.handle("userAnswers:create", async (event, data) => {
+  return await UserAnswerController.create(data);
+});
+ipcMain.handle("userAnswers:delete", async (event, resultId, questionId) => {
+  return await UserAnswerController.delete(resultId, questionId);
 });
 const __dirname = path$1.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path$1.join(__dirname, "..");

@@ -59,3 +59,26 @@ contextBridge.exposeInMainWorld('categoryAPI', {
   delete: id => ipcRenderer.invoke('categories:delete', id),
   nameExists: (name, excludeId) => ipcRenderer.invoke('categories:nameExists', name, excludeId),
 })
+
+// AI API
+contextBridge.exposeInMainWorld('aiAPI', {
+  explainQuestion: (questionId, optionSelectedId) =>
+    ipcRenderer.invoke('ai:explainQuestion', questionId, optionSelectedId),
+  feedbackExam: (examId, resultId) => ipcRenderer.invoke('ai:feedbackExam', examId, resultId),
+})
+
+// Result API
+contextBridge.exposeInMainWorld('resultAPI', {
+  getAll: () => ipcRenderer.invoke('results:getAll'),
+  getById: id => ipcRenderer.invoke('results:getById', id),
+  create: data => ipcRenderer.invoke('results:create', data),
+  delete: id => ipcRenderer.invoke('results:delete', id),
+})
+
+// UserAnswer API
+contextBridge.exposeInMainWorld('userAnswerAPI', {
+  getAll: () => ipcRenderer.invoke('userAnswers:getAll'),
+  getById: (resultId, questionId) => ipcRenderer.invoke('userAnswers:getById', resultId, questionId),
+  create: data => ipcRenderer.invoke('userAnswers:create', data),
+  delete: (resultId, questionId) => ipcRenderer.invoke('userAnswers:delete', resultId, questionId),
+})

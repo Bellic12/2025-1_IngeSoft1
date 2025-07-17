@@ -23,10 +23,9 @@ const Questions = () => {
         // Use search API with filters
         questions = await window.questionAPI.search({
           searchTerm: filters.searchTerm,
-          categoryIds: filters.categoryIds
+          categoryIds: filters.categoryIds,
         })
       }
-      console.log('Fetched questions:', questions)
       setQuestions(questions)
     } catch (err) {
       setError(err.message)
@@ -38,9 +37,8 @@ const Questions = () => {
   const performSearch = async () => {
     const filters = {
       searchTerm: searchTerm.trim(),
-      categoryIds: selectedCategories
+      categoryIds: selectedCategories,
     }
-    console.log('Performing search with filters:', filters)
     await fetchQuestions(filters)
   }
 
@@ -82,18 +80,13 @@ const Questions = () => {
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
-          
+
           {/* Filter button */}
-          <button 
-            className="btn btn-outline"
-            onClick={() => setShowCategoryFilter(true)}
-          >
+          <button className="btn btn-outline" onClick={() => setShowCategoryFilter(true)}>
             <Filter className="w-4 h-4" />
             Filtrar por Categoría
             {selectedCategories.length > 0 && (
-              <span className="badge badge-primary badge-sm ml-2">
-                {selectedCategories.length}
-              </span>
+              <span className="badge badge-primary badge-sm ml-2">{selectedCategories.length}</span>
             )}
           </button>
         </div>
@@ -108,7 +101,9 @@ const Questions = () => {
               <Question
                 key={question.question_id}
                 question={question}
-                fetchQuestions={() => fetchQuestions({ searchTerm: searchTerm.trim(), categoryIds: selectedCategories })}
+                fetchQuestions={() =>
+                  fetchQuestions({ searchTerm: searchTerm.trim(), categoryIds: selectedCategories })
+                }
               />
             ))}
             {questions.length === 0 && (
@@ -119,8 +114,12 @@ const Questions = () => {
           </div>
         )}
       </div>
-      <CreateQuestion fetchQuestions={() => fetchQuestions({ searchTerm: searchTerm.trim(), categoryIds: selectedCategories })} />
-      
+      <CreateQuestion
+        fetchQuestions={() =>
+          fetchQuestions({ searchTerm: searchTerm.trim(), categoryIds: selectedCategories })
+        }
+      />
+
       {/* Category Filter Modal */}
       <CategoryFilter
         isOpen={showCategoryFilter}

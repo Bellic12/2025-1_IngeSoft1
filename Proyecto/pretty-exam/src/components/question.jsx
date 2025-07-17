@@ -12,11 +12,6 @@ const getTypeBadge = type => {
 }
 
 const QuestionCard = ({ question, fetchQuestions }) => {
-  console.log('Datos de la pregunta recibidos:', question)
-  if (question.options) {
-    console.log('Opciones de la pregunta:', question.options)
-  }
-
   return (
     <div className="card bg-base-300 shadow-lg hover:shadow-xl transition-shadow">
       <div className="card-body">

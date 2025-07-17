@@ -46,9 +46,7 @@ const ExamDetail = () => {
   }, [id])
 
   const handleStartSimulation = () => {
-    // TODO: Implementar lógica para iniciar simulación
-    console.log('Iniciar simulación del examen:', id)
-    toast.info('Funcionalidad de simulación próximamente')
+    navigate(`/exam/${id}/simulacion`)
   }
 
   const handleAddQuestions = () => {

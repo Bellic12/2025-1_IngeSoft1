@@ -23,8 +23,7 @@ const Exam = ({ exam, fetchExams }) => {
 
   const handleStartSimulation = e => {
     e.stopPropagation()
-    // TODO: Implementar lógica para iniciar simulación
-    console.log('Iniciar simulación del examen:', exam.exam_id)
+    navigate(`/exam/${exam.exam_id}/simulacion`)
   }
 
   return (

@@ -14,6 +14,21 @@ const QuestionController = {
     return questions.map(q => q.get({ plain: true }))
   },
 
+  // Get a question by ID with options and category
+  getById: async id => {
+    const question = await Question.findOne({
+      where: { question_id: id },
+      include: [
+        { model: Option, as: 'options' },
+        { model: Category, as: 'category' },
+      ],
+    })
+    if (!question) {
+      throw new Error(`Question with ID ${id} not found`)
+    }
+    return question.get({ plain: true })
+  },
+
   // Create a new question with options
   create: async data => {
     const t = await sequelize.transaction()
@@ -100,6 +115,7 @@ const QuestionController = {
     }
   },
 
+  // Delete a question by ID
   delete: async id => {
     return await Question.destroy({ where: { question_id: id } })
   },

@@ -46,7 +46,6 @@ class TrueFalseQuestion {
     this.text = data.text
     this.type = 'true_false'
     this.category_id = data.category_id || 1
-    // Si data.options existe, respétalo (para edición), si no, inicializa por defecto
     this.options = data.options
       ? [
           {
