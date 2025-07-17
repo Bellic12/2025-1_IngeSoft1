@@ -46,7 +46,6 @@ const Exams = () => {
 
     setFilteredExams(filtered)
   }, [exams, searchTerm])
-  }, [exams, searchTerm])
 
   useEffect(() => {
     fetchExams()
