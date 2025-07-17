@@ -1,9 +1,12 @@
 import { ipcMain, app, BrowserWindow } from "electron";
+import "fs";
+import require$$1, { join } from "path";
+import "os";
+import "crypto";
 import { fileURLToPath } from "node:url";
 import { Sequelize, DataTypes, Op } from "sequelize";
-import path, { join } from "path";
-import path$1 from "node:path";
-const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
+import path from "node:path";
+const __dirname$1 = require$$1.dirname(fileURLToPath(import.meta.url));
 const sequelize = new Sequelize({
   dialect: "sqlite",
   storage: join(__dirname$1, "..", "pretty_exam.db"),
@@ -622,147 +625,19 @@ const ResultController = {
     return await Result.destroy({ where: { result_id: id } });
   }
 };
-function boldMarkdownToHtml(text) {
-  if (!text) return text;
-  return text.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>");
+{
+  console.log("Gemini API key is not set.");
 }
-const apiKey = "AIzaSyBbsKswX36NvOR84J85kipxK5pMxNnbZls";
 const AIController = {
   explainQuestion: async (questionId, optionSelectedId) => {
-    var _a, _b, _c, _d, _e, _f;
-    let option = {};
-    let prompt = "";
-    if (optionSelectedId === void 0 || optionSelectedId === null) {
-      option.text = "Pregunta no respondida";
-      const question = await QuestionController.getById(questionId);
-      if (!question) throw new Error("Question not found");
-      const correctOption = question.options.find((opt) => opt.is_correct);
-      prompt = `
-        No saludes, no te presentes, no digas que eres una IA.
-        Actúa como un profesor experto en el tema.
-        El estudiante no respondió la siguiente pregunta de un examen tipo test.
-        No uses latex, escribe símbolos matemáticos de manera simple, usa texto plano para fórmulas.
-
-        Pregunta: ${question.text}
-        Opciones: 
-        ${question.options.map((opt, idx) => `  ${String.fromCharCode(65 + idx)}. ${opt.text}`).join("\n")}
-        Respuesta correcta: ${correctOption ? correctOption.text : "No disponible"}
-
-        Explica de manera clara y sencilla por qué esta es la respuesta correcta para que el estudiante comprenda el razonamiento.
-        También explica por qué las demás respuestas no son correctas.
-        Responde en español, de forma muy breve y didáctica.
-      `;
-    } else {
-      option = await OptionController.getById(optionSelectedId);
-      const question = await QuestionController.getById(questionId);
-      if (!question || !option) throw new Error("Question or option not found");
-      prompt = `
-        No saludes, no te presentes, no digas que eres una IA.
-        Actúa como un profesor experto en el tema.
-        No uses latex, escribe símbolos matemáticos de manera simple, usa texto plano para fórmulas.
-        Opciones: 
-        ${question.options.map((opt, idx) => `  ${String.fromCharCode(65 + idx)}. ${opt.text}`).join("\n")}
-        Respuesta seleccionada: ${option.text}
-
-        Explica si la respuesta es correcta o incorrecta, y justifica la explicación para que el estudiante comprenda el razonamiento.
-        También explica por qué las demás respuestas no son correctas.
-        Responde en español, de forma muy breve y didáctica.
-      `;
-    }
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-    const body = {
-      contents: [
-        {
-          parts: [{ text: prompt }]
-        }
-      ]
-    };
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body)
-      });
-      if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.statusText}`);
-      }
-      const data = await response.json();
-      let text = ((_f = (_e = (_d = (_c = (_b = (_a = data == null ? void 0 : data.candidates) == null ? void 0 : _a[0]) == null ? void 0 : _b.content) == null ? void 0 : _c.parts) == null ? void 0 : _d[0]) == null ? void 0 : _e.text) == null ? void 0 : _f.trim()) || "No se pudo obtener explicación de la IA.";
-      text = boldMarkdownToHtml(text);
-      return text;
-    } catch (err) {
-      return `Error al comunicarse con Gemini: ${err.message}`;
+    {
+      throw new Error("Gemini API key is not set.");
     }
   },
   // Método para retroalimentación del examen
   feedbackExam: async (examId, resultId) => {
-    var _a, _b, _c, _d, _e, _f;
-    const exam = await ExamController.getById(examId);
-    console.log(exam);
-    const result = await ResultController.getById(resultId);
-    if (!exam || !result) throw new Error("Exam or result not found");
-    const userAnswers = Array.isArray(result.userAnswers) ? result.userAnswers : [];
-    const correctCount = result.correct_answers;
-    const incorrectCount = result.incorrect_answers;
-    let resumen = "";
-    const questions = Array.isArray(exam.questions) ? exam.questions : [];
-    questions.forEach((q, idx) => {
-      var _a2;
-      const options = Array.isArray(q.options) ? q.options : [];
-      const userAnswer = userAnswers.find((ua) => ua.question_id === q.question_id);
-      const correctOpt = options.find((opt) => opt.is_correct);
-      resumen += `Pregunta ${idx + 1}: ${q.text || "Sin texto"}
-`;
-      resumen += `Opciones: ${options.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt.text || "Sin texto"}${opt.is_correct ? " (correcta)" : ""}`).join(" ")}
-`;
-      const opcionEscogida = userAnswer ? ((_a2 = options.find((opt) => opt.option_id === userAnswer.option_id)) == null ? void 0 : _a2.text) || "Sin texto" : "No respondida";
-      resumen += `Opción escogida: ${opcionEscogida}
-`;
-      resumen += `Respuesta correcta: ${correctOpt ? correctOpt.text || "Sin texto" : "No disponible"}
-
-`;
-    });
-    const prompt = `No saludes, no te presentes.
-      no digas que eres una IA.
-      Actúa como un profesor experto en el tema y en dar retroalimentación de exámenes.
-      
-
-Resumen del desempeño:
-- Respuestas correctas: ${correctCount}
-- Respuestas incorrectas: ${incorrectCount}
-
-${resumen}
-
-      Por favor, da una retroalimentación breve y didáctica sobre el desempeño general del estudiante en este examen, sin explicar cada pregunta.
-      Indica en qué aspectos puede mejorar y qué cosas hizo bien.`;
-    console.log(prompt);
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-    const body = {
-      contents: [
-        {
-          parts: [{ text: prompt }]
-        }
-      ]
-    };
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body)
-      });
-      if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.statusText}`);
-      }
-      const data = await response.json();
-      let text = ((_f = (_e = (_d = (_c = (_b = (_a = data == null ? void 0 : data.candidates) == null ? void 0 : _a[0]) == null ? void 0 : _b.content) == null ? void 0 : _c.parts) == null ? void 0 : _d[0]) == null ? void 0 : _e.text) == null ? void 0 : _f.trim()) || "No se pudo obtener retroalimentación de la IA.";
-      text = boldMarkdownToHtml(text);
-      return text;
-    } catch (err) {
-      return `Error al comunicarse con Gemini: ${err.message}`;
+    {
+      throw new Error("Gemini API key is not set.");
     }
   }
 };
@@ -845,18 +720,18 @@ ipcMain.handle("userAnswers:create", async (event, data) => {
 ipcMain.handle("userAnswers:delete", async (event, resultId, questionId) => {
   return await UserAnswerController.delete(resultId, questionId);
 });
-const __dirname = path$1.dirname(fileURLToPath(import.meta.url));
-process.env.APP_ROOT = path$1.join(__dirname, "..");
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+process.env.APP_ROOT = path.join(__dirname, "..");
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
-const MAIN_DIST = path$1.join(process.env.APP_ROOT, "dist-electron");
-const RENDERER_DIST = path$1.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path$1.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
+const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
+const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 let win = null;
 function createWindow() {
   win = new BrowserWindow({
-    icon: path$1.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
-      preload: path$1.join(__dirname, "preload.mjs")
+      preload: path.join(__dirname, "preload.mjs")
     }
   });
   win.webContents.on("did-finish-load", () => {
@@ -865,7 +740,7 @@ function createWindow() {
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
   } else {
-    win.loadFile(path$1.join(RENDERER_DIST, "index.html"));
+    win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
 }
 app.on("window-all-closed", () => {

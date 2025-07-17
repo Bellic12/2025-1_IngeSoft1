@@ -3,14 +3,17 @@ import OptionController from './option.controller'
 import ExamController from './exam.controller'
 import ResultController from './result.controller'
 import { boldMarkdownToHtml } from '../utils/markdown'
-const apiKey = 'AIzaSyBbsKswX36NvOR84J85kipxK5pMxNnbZls'
+const apiKey = null
 
 if (!apiKey) {
-  throw new Error('Gemini API key is not set.')
+  console.log('Gemini API key is not set.')
 }
 
 const AIController = {
   explainQuestion: async (questionId, optionSelectedId) => {
+    if (!apiKey) {
+      throw new Error('Gemini API key is not set.')
+    }
     let option = {}
     let prompt = ''
     if (optionSelectedId === undefined || optionSelectedId === null) {
@@ -88,6 +91,9 @@ const AIController = {
 
   // Método para retroalimentación del examen
   feedbackExam: async (examId, resultId) => {
+    if (!apiKey) {
+      throw new Error('Gemini API key is not set.')
+    }
     // Obtener el examen con sus preguntas y opciones
     const exam = await ExamController.getById(examId)
     console.log(exam)
