@@ -48,3 +48,19 @@ electron.contextBridge.exposeInMainWorld("categoryAPI", {
   delete: (id) => electron.ipcRenderer.invoke("categories:delete", id),
   nameExists: (name, excludeId) => electron.ipcRenderer.invoke("categories:nameExists", name, excludeId)
 });
+electron.contextBridge.exposeInMainWorld("aiAPI", {
+  explainQuestion: (questionId, optionSelectedId) => electron.ipcRenderer.invoke("ai:explainQuestion", questionId, optionSelectedId),
+  feedbackExam: (examId, resultId) => electron.ipcRenderer.invoke("ai:feedbackExam", examId, resultId)
+});
+electron.contextBridge.exposeInMainWorld("resultAPI", {
+  getAll: () => electron.ipcRenderer.invoke("results:getAll"),
+  getById: (id) => electron.ipcRenderer.invoke("results:getById", id),
+  create: (data) => electron.ipcRenderer.invoke("results:create", data),
+  delete: (id) => electron.ipcRenderer.invoke("results:delete", id)
+});
+electron.contextBridge.exposeInMainWorld("userAnswerAPI", {
+  getAll: () => electron.ipcRenderer.invoke("userAnswers:getAll"),
+  getById: (resultId, questionId) => electron.ipcRenderer.invoke("userAnswers:getById", resultId, questionId),
+  create: (data) => electron.ipcRenderer.invoke("userAnswers:create", data),
+  delete: (resultId, questionId) => electron.ipcRenderer.invoke("userAnswers:delete", resultId, questionId)
+});

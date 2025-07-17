@@ -10,10 +10,16 @@ const ExamController = {
     return exams.map(e => e.get({ plain: true }))
   },
 
-  // Get an exam by ID with associated questions
+  // Get an exam by ID with associated questions and their options
   getById: async id => {
     const exam = await Exam.findByPk(id, {
-      include: [{ model: Question, as: 'questions' }],
+      include: [
+        {
+          model: Question,
+          as: 'questions',
+          include: [{ model: Option, as: 'options' }],
+        },
+      ],
     })
     return exam ? exam.get({ plain: true }) : null
   },
