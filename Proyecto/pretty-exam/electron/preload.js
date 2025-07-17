@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('questionAPI', {
   create: data => ipcRenderer.invoke('questions:create', data),
   update: (id, data) => ipcRenderer.invoke('questions:update', id, data),
   delete: id => ipcRenderer.invoke('questions:delete', id),
+  search: filters => ipcRenderer.invoke('questions:search', filters),
 })
 
 // Option API
@@ -36,4 +37,25 @@ contextBridge.exposeInMainWorld('optionAPI', {
   delete: id => ipcRenderer.invoke('options:delete', id),
 })
 
-// Add more APIs as needed
+// Exam API
+contextBridge.exposeInMainWorld('examAPI', {
+  getAll: () => ipcRenderer.invoke('exams:getAll'),
+  getById: id => ipcRenderer.invoke('exams:getById', id),
+  create: data => ipcRenderer.invoke('exams:create', data),
+  update: (id, data) => ipcRenderer.invoke('exams:update', id, data),
+  delete: id => ipcRenderer.invoke('exams:delete', id),
+  getQuestions: examId => ipcRenderer.invoke('exams:getQuestions', examId),
+  addQuestions: (examId, questionIds) =>
+    ipcRenderer.invoke('exams:addQuestions', examId, questionIds),
+  removeQuestions: (examId, questionIds) =>
+    ipcRenderer.invoke('exams:removeQuestions', examId, questionIds),
+})
+
+// Category API
+contextBridge.exposeInMainWorld('categoryAPI', {
+  getAll: () => ipcRenderer.invoke('categories:getAll'),
+  create: data => ipcRenderer.invoke('categories:create', data),
+  update: (id, data) => ipcRenderer.invoke('categories:update', id, data),
+  delete: id => ipcRenderer.invoke('categories:delete', id),
+  nameExists: (name, excludeId) => ipcRenderer.invoke('categories:nameExists', name, excludeId),
+})

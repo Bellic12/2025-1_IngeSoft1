@@ -1,4 +1,40 @@
 @import 'tailwindcss';
-@plugin 'daisyui';
+@plugin 'daisyui' {
+    themes: dark --default;
+}
 
+/* Force CategoryFilter modal to appear above everything */
+.category-filter-modal {
+  z-index: 999999 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
+.category-filter-modal .modal-box {
+  z-index: 1000000 !important;
+  position: relative !important;
+}
+
+.category-filter-modal .modal-backdrop {
+  z-index: 999998 !important;
+  position: fixed !important;
+}
+
+/* Ensure it's above any dialog element */
+.category-filter-modal {
+  z-index: 999999 !important;
+}
+
+/* Override DaisyUI modal z-index */
+dialog.modal {
+  z-index: 1000 !important;
+}
+
+/* But keep category filter modal highest */
+.category-filter-modal {
+  z-index: 999999 !important;
+}
 

@@ -11,8 +11,8 @@ CREATE TABLE Question (
     text TEXT NOT NULL,
     type TEXT CHECK(type IN ('multiple_choice', 'true_false')),
     category_id INTEGER,
-    created_at DATETIME,
-    updated_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     source TEXT CHECK(source IN ('manual', 'generated')),
     FOREIGN KEY (category_id) REFERENCES Category(category_id) ON DELETE SET NULL
 );
@@ -32,7 +32,8 @@ CREATE TABLE Exam (
     name TEXT NOT NULL,
     description TEXT,
     duration_minutes INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Junction table between exams and questions

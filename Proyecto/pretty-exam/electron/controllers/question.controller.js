@@ -1,5 +1,6 @@
 import sequelize from '../config/database'
 import { Question, Option, Category } from '../models/index'
+import { Op } from 'sequelize'
 
 const QuestionController = {
   // Get questions with options and category
@@ -101,6 +102,66 @@ const QuestionController = {
 
   delete: async id => {
     return await Question.destroy({ where: { question_id: id } })
+  },
+
+  // Search questions with filters
+  search: async (filters = {}) => {
+    console.log('QuestionController.search called with filters:', filters)
+    const { searchTerm, categoryIds } = filters
+    let whereClause = {}
+
+    // Build where clause for categories
+    if (categoryIds && categoryIds.length > 0) {
+      whereClause.category_id = {
+        [Op.in]: categoryIds
+      }
+      console.log('Added category filter:', whereClause.category_id)
+    }
+
+    // Build search conditions
+    let searchConditions = []
+    
+    if (searchTerm && searchTerm.trim()) {
+      searchConditions = [
+        // Search in question text
+        { text: { [Op.iLike]: `%${searchTerm.trim()}%` } },
+        // Search in category name
+        { '$category.name$': { [Op.iLike]: `%${searchTerm.trim()}%` } }
+      ]
+      console.log('Added search conditions for term:', searchTerm.trim())
+    }
+
+    // Combine conditions
+    if (searchConditions.length > 0) {
+      if (Object.keys(whereClause).length > 0) {
+        // If we have category filter, combine with AND
+        whereClause = {
+          [Op.and]: [
+            whereClause,
+            { [Op.or]: searchConditions }
+          ]
+        }
+      } else {
+        // If no category filter, just use search conditions
+        whereClause = {
+          [Op.or]: searchConditions
+        }
+      }
+    }
+
+    console.log('Final where clause:', JSON.stringify(whereClause, null, 2))
+
+    const questions = await Question.findAll({
+      where: whereClause,
+      include: [
+        { model: Option, as: 'options' },
+        { model: Category, as: 'category' },
+      ],
+      order: [['question_id', 'DESC']] // Most recent first
+    })
+
+    console.log(`Found ${questions.length} questions`)
+    return questions.map(q => q.get({ plain: true }))
   },
 }
 

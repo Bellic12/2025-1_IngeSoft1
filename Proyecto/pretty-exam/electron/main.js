@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url'
 // Import ipc handlers
 import './ipcHandlers/question.ipc.js'
 import './ipcHandlers/option.ipc.js'
+import './ipcHandlers/category.ipc.js'
+import './ipcHandlers/exam.ipc.js'
 import sequelize from './config/database.js'
 import path from 'node:path'
 

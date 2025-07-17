@@ -27,7 +27,11 @@ const QuestionCard = ({ question, fetchQuestions }) => {
               <div className={`badge ${getTypeBadge(question.type)}`}>
                 {question.type === 'multiple_choice' ? 'Selección múltiple' : 'Verdadero/Falso'}
               </div>
-              <div className="badge badge-outline">{question.category.name}</div>
+              <div className="badge badge-outline">
+                {typeof question.category === 'object'
+                  ? question.category?.name || 'General'
+                  : question.category || 'General'}
+              </div>
             </div>
           </div>
           <div className="flex gap-2">
