@@ -160,7 +160,6 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
     }
   }
 
-  // Function to get current category name
   const getCurrentCategoryName = () => {
     if (!categoryId) return 'Seleccionar categoría'
     const category = categories.find(c => c.category_id === categoryId)

@@ -72,7 +72,6 @@ const ExamResults = () => {
     return 'text-error'
   }
 
-  // Helper para mostrar el nombre de la categoría correctamente
   const getCategoryName = category => {
     if (typeof category === 'object' && category !== null && 'name' in category) {
       return category.name

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Search, Filter } from 'lucide-react'
 import Question from '../components/question'
-import CreateQuestion from '../components/forms/createQuestion'
+import CreateQuestionModal from '../components/forms/createQuestionModal'
 import CategoryFilter from '../components/CategoryFilter'
 
 const Questions = () => {
@@ -114,7 +114,7 @@ const Questions = () => {
           </div>
         )}
       </div>
-      <CreateQuestion
+      <CreateQuestionModal
         fetchQuestions={() =>
           fetchQuestions({ searchTerm: searchTerm.trim(), categoryIds: selectedCategories })
         }

@@ -44,13 +44,13 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
         const allModals = document.querySelectorAll('.modal')
         
         allDialogs.forEach(dialog => {
-          if (!dialog.classList.contains('category-filter-modal')) {
+          if (!dialog.hasAttribute('data-category-filter-modal')) {
             dialog.style.zIndex = '1000'
           }
         })
         
         allModals.forEach(modal => {
-          if (!modal.classList.contains('category-filter-modal')) {
+          if (!modal.hasAttribute('data-category-filter-modal')) {
             modal.style.zIndex = '1000'
           }
         })
@@ -65,13 +65,13 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
         const allModals = document.querySelectorAll('.modal')
         
         allDialogs.forEach(dialog => {
-          if (!dialog.classList.contains('category-filter-modal')) {
+          if (!dialog.hasAttribute('data-category-filter-modal')) {
             dialog.style.zIndex = ''
           }
         })
         
         allModals.forEach(modal => {
-          if (!modal.classList.contains('category-filter-modal')) {
+          if (!modal.hasAttribute('data-category-filter-modal')) {
             modal.style.zIndex = ''
           }
         })
@@ -170,8 +170,25 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
 
   // Use createPortal to render above any existing modal with a very high z-index
   const modalElement = (
-    <div className="modal modal-open category-filter-modal">
-      <div className="modal-box w-full max-w-md max-h-[80vh] flex flex-col">
+    <div 
+      className="modal modal-open"
+      data-category-filter-modal="true"
+      style={{
+        zIndex: 999999,
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh'
+      }}
+    >
+      <div 
+        className="modal-box w-full max-w-md max-h-[80vh] flex flex-col"
+        style={{
+          zIndex: 1000000,
+          position: 'relative'
+        }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-base-200">
           <h2 className="text-lg font-semibold">{title}</h2>

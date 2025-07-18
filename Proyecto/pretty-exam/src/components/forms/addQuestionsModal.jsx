@@ -130,7 +130,6 @@ const AddQuestionsModal = ({ examId, onClose, onQuestionsAdded }) => {
     fetchAllQuestions() // Refresh the questions list
   }
 
-  // Function to normalize text by removing accents and special characters
   const normalizeText = text => {
     return text
       .toLowerCase()
@@ -275,7 +274,6 @@ const AddQuestionsModal = ({ examId, onClose, onQuestionsAdded }) => {
             </div>
             <CreateQuestion
               fetchQuestions={handleQuestionCreated}
-              isInModal={true}
               onClose={() => setShowCreateQuestion(false)}
             />
           </div>
