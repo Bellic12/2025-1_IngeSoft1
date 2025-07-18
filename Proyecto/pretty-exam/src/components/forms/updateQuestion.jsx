@@ -160,6 +160,13 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
     }
   }
 
+  // Function to get current category name
+  const getCurrentCategoryName = () => {
+    if (!categoryId) return 'Seleccionar categoría'
+    const category = categories.find(c => c.category_id === categoryId)
+    return category?.name || 'Categoría seleccionada'
+  }
+
   const resetForm = () => {
     setText(originalState.current.text)
     setType(originalState.current.type)
@@ -168,8 +175,9 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
     setFormError('')
   }
 
-  const handleOpenModal = () => {
+  const handleOpenModal = async () => {
     resetForm()
+    await fetchCategories()
     document.getElementById('modal_update_question' + question.question_id).showModal()
   }
 
@@ -244,10 +252,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
                   }}
                 >
                   <Tag className="w-4 h-4" />
-                  {categoryId 
-                    ? categories.find(c => c.category_id === categoryId)?.name || 'Categoría seleccionada'
-                    : 'Seleccionar categoría'
-                  }
+                  {getCurrentCategoryName()}
                 </button>
                 {categoryId && (
                   <>
@@ -369,10 +374,10 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
       {/* Category Selector Modal */}
       <CategoryFilter
         isOpen={showCategorySelector}
-        onClose={() => {
+        onClose={async () => {
           setShowCategorySelector(false)
           setEditingCategoryId(null)
-          // Reopen the main modal if it was open before
+          await fetchCategories()
           if (modalWasOpen) {
             setModalWasOpen(false)
             setTimeout(() => {
@@ -381,13 +386,11 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
           }
         }}
         selectedCategories={categoryId ? [categoryId] : []}
-        onCategorySelect={(categories) => {
+        onCategorySelect={async (categories) => {
           setCategoryId(categories[0] || null)
           setShowCategorySelector(false)
           setEditingCategoryId(null)
-          // Refresh categories to get updated names
-          fetchCategories()
-          // Reopen the main modal if it was open before
+          await fetchCategories()
           if (modalWasOpen) {
             setModalWasOpen(false)
             setTimeout(() => {
