@@ -13,3 +13,7 @@ ipcMain.handle('results:create', async (event, data) => {
 ipcMain.handle('results:delete', async (event, id) => {
   return await ResultController.delete(id)
 })
+
+ipcMain.handle('results:getByExamId', async (event, examId) => {
+  return await ResultController.getByExamId(examId)
+})

@@ -1,12 +1,9 @@
 import { ipcMain, app, BrowserWindow } from "electron";
-import "fs";
-import require$$1, { join } from "path";
-import "os";
-import "crypto";
 import { fileURLToPath } from "node:url";
 import { Sequelize, DataTypes, Op } from "sequelize";
-import path from "node:path";
-const __dirname$1 = require$$1.dirname(fileURLToPath(import.meta.url));
+import path, { join } from "path";
+import path$1 from "node:path";
+const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
 const sequelize = new Sequelize({
   dialect: "sqlite",
   storage: join(__dirname$1, "..", "pretty_exam.db"),
@@ -601,6 +598,13 @@ const ResultController = {
     });
     return results.map((e) => e.get({ plain: true }));
   },
+  getByExamId: async (examId) => {
+    const results = await Result.findAll({
+      where: { exam_id: examId },
+      order: [["taken_at", "DESC"]]
+    });
+    return results.map((e) => e.get({ plain: true }));
+  },
   getById: async (id) => {
     const result = await Result.findByPk(id, {
       include: [
@@ -683,6 +687,9 @@ ipcMain.handle("results:create", async (event, data) => {
 ipcMain.handle("results:delete", async (event, id) => {
   return await ResultController.delete(id);
 });
+ipcMain.handle("results:getByExamId", async (event, examId) => {
+  return await ResultController.getByExamId(examId);
+});
 const UserAnswerController = {
   getAll: async () => {
     return await UserAnswer.findAll({ include: ["result", "question", "option"] });
@@ -720,18 +727,18 @@ ipcMain.handle("userAnswers:create", async (event, data) => {
 ipcMain.handle("userAnswers:delete", async (event, resultId, questionId) => {
   return await UserAnswerController.delete(resultId, questionId);
 });
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-process.env.APP_ROOT = path.join(__dirname, "..");
+const __dirname = path$1.dirname(fileURLToPath(import.meta.url));
+process.env.APP_ROOT = path$1.join(__dirname, "..");
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
-const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
-const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
+const MAIN_DIST = path$1.join(process.env.APP_ROOT, "dist-electron");
+const RENDERER_DIST = path$1.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path$1.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 let win = null;
 function createWindow() {
   win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    icon: path$1.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
-      preload: path.join(__dirname, "preload.mjs")
+      preload: path$1.join(__dirname, "preload.mjs")
     }
   });
   win.webContents.on("did-finish-load", () => {
@@ -740,7 +747,7 @@ function createWindow() {
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
   } else {
-    win.loadFile(path.join(RENDERER_DIST, "index.html"));
+    win.loadFile(path$1.join(RENDERER_DIST, "index.html"));
   }
 }
 app.on("window-all-closed", () => {

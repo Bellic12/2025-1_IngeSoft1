@@ -7,6 +7,7 @@ import { ToastContainer } from 'react-toastify'
 import ExamSimulation from './components/examSimulation'
 import { ExamSimProvider } from './components/examSimContext'
 import ExamResults from './components/examResults'
+import ExamHistory from './pages/examHistory'
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
               <Route index element={<Exams />} />
               <Route path="exams" element={<Exams />} />
               <Route path="exam/:id" element={<ExamDetail />} />
+              <Route path="exam/:id/history" element={<ExamHistory />} />
               <Route path="preguntas" element={<Questions />} />
             </Route>
           </Routes>

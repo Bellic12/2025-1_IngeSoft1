@@ -11,6 +11,14 @@ const ResultController = {
     return results.map(e => e.get({ plain: true }))
   },
 
+  getByExamId: async examId => {
+    const results = await Result.findAll({
+      where: { exam_id: examId },
+      order: [['taken_at', 'DESC']],
+    })
+    return results.map(e => e.get({ plain: true }))
+  },
+
   getById: async id => {
     const result = await Result.findByPk(id, {
       include: [

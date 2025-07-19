@@ -9,7 +9,7 @@ const Layout = () => {
 
   return (
     <>
-      <div className="grid grid-cols-12">
+      <div className="flex min-h-screen w-full">
         {/* Mobile menu button */}
         <div className="lg:hidden fixed top-4 left-4 z-50">
           <button
@@ -23,15 +23,14 @@ const Layout = () => {
         {/* Sidebar */}
         <aside
           className={`
-          col-span-12 lg:col-span-2 min-h-screen bg-base-300 
-          fixed lg:static inset-y-0 left-0 z-40 lg:w-auto
-          transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-          lg:translate-x-0 transition-transform duration-300 ease-in-out
-        `}
+            bg-base-300 w-full lg:w-64 flex-shrink-0 z-40
+            lg:sticky lg:top-0 lg:h-screen
+            transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+            lg:translate-x-0 transition-transform duration-300 ease-in-out
+          `}
         >
           <div className="p-6 pt-16 lg:pt-6">
             <h1 className="text-xl font-bold mb-8">Pretty Exam</h1>
-
             <ul className="menu space-y-2 w-full">
               <li>
                 <Link
@@ -66,7 +65,7 @@ const Layout = () => {
         )}
 
         {/* Main content */}
-        <div className="col-span-12 lg:col-span-10 p-6 pt-16 lg:pt-6">
+        <div className="flex-1 p-6 pt-16 lg:pt-6">
           <ExamSimProvider>
             <Outlet />
           </ExamSimProvider>

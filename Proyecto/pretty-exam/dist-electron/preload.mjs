@@ -55,6 +55,7 @@ electron.contextBridge.exposeInMainWorld("aiAPI", {
 electron.contextBridge.exposeInMainWorld("resultAPI", {
   getAll: () => electron.ipcRenderer.invoke("results:getAll"),
   getById: (id) => electron.ipcRenderer.invoke("results:getById", id),
+  getByExamId: (examId) => electron.ipcRenderer.invoke("results:getByExamId", examId),
   create: (data) => electron.ipcRenderer.invoke("results:create", data),
   delete: (id) => electron.ipcRenderer.invoke("results:delete", id)
 });
