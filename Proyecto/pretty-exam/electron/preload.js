@@ -71,6 +71,7 @@ contextBridge.exposeInMainWorld('aiAPI', {
 contextBridge.exposeInMainWorld('resultAPI', {
   getAll: () => ipcRenderer.invoke('results:getAll'),
   getById: id => ipcRenderer.invoke('results:getById', id),
+  getByExamId: examId => ipcRenderer.invoke('results:getByExamId', examId),
   create: data => ipcRenderer.invoke('results:create', data),
   delete: id => ipcRenderer.invoke('results:delete', id),
 })
