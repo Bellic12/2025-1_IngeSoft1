@@ -92,8 +92,11 @@ const Questions = () => {
             )}
           </button>
 
-          {/* AI Generator button */}
-          <button className="btn btn-primary" onClick={() => setShowAIGenerator(true)}>
+          {/* AI Generator button - AÑADIR ESTE BOTÓN */}
+          <button 
+            className="btn btn-primary" 
+            onClick={() => setShowAIGenerator(true)}
+          >
             <Wand2 className="w-4 h-4 mr-2" />
             Generar con IA
           </button>
