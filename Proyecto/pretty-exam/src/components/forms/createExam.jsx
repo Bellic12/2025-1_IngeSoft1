@@ -4,11 +4,11 @@ import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'react-toastify'
 
-  const CreateExam = ({ fetchExams }) => {
-    const [name, setName] = useState('')
-    const [description, setDescription] = useState('')
-    const [durationMinutes, setDuration] = useState('')
-    const [loading, setLoading] = useState(false)
+const CreateExam = ({ fetchExams }) => {
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [durationMinutes, setDuration] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const handleOpenModal = () => {
     resetForm()
@@ -22,31 +22,8 @@ import { toast } from 'react-toastify'
     setLoading(false)
   }
 
-  const validateForm = () => {
-    if (!name.trim()) {
-      toast.error('El nombre del examen es obligatorio')
-      return false
-    }
-
-    if (!description.trim()) {
-      toast.error('La descripción del examen es obligatoria')
-      return false
-    }
-
-    if (!durationMinutes.trim()) {
-      toast.error('La duración del examen es obligatoria')
-      return false
-    }
-
-    return true
-  }
-
   const handleSubmit = async event => {
     event.preventDefault()
-
-    if (!validateForm()) {
-      return
-    }
 
     setLoading(true)
 
