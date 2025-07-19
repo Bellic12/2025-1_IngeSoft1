@@ -23,7 +23,6 @@ const Exams = () => {
     setLoading(false)
   }
 
-  // Function to normalize text by removing accents and special characters
   const normalizeText = text => {
     return text
       .toLowerCase()

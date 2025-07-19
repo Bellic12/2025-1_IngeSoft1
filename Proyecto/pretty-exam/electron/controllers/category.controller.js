@@ -48,15 +48,6 @@ const CategoryController = {
 
   // Delete a category
   delete: async (id) => {
-    // Check if category has associated questions
-    const questionCount = await Question.count({
-      where: { category_id: id }
-    })
-    
-    if (questionCount > 0) {
-      throw new Error('Cannot delete category with associated questions')
-    }
-    
     const deletedRowsCount = await Category.destroy({
       where: { category_id: id }
     })

@@ -326,6 +326,18 @@ const QuestionController = {
     });
     console.log(`Found ${questions.length} questions`);
     return questions.map((q) => q.get({ plain: true }));
+  },
+  // Get questions by category
+  getByCategory: async (categoryId) => {
+    const questions = await Question.findAll({
+      where: { category_id: categoryId },
+      include: [
+        { model: Option, as: "options" },
+        { model: Category, as: "category" }
+      ],
+      order: [["question_id", "DESC"]]
+    });
+    return questions.map((q) => q.get({ plain: true }));
   }
 };
 ipcMain.handle("questions:getAll", async () => {
@@ -342,6 +354,9 @@ ipcMain.handle("questions:delete", async (_, id) => {
 });
 ipcMain.handle("questions:search", async (_, filters) => {
   return await QuestionController.search(filters);
+});
+ipcMain.handle("questions:getByCategory", async (_, categoryId) => {
+  return await QuestionController.getByCategory(categoryId);
 });
 const OptionController = {
   getAll: async () => {
@@ -415,12 +430,6 @@ const CategoryController = {
   },
   // Delete a category
   delete: async (id) => {
-    const questionCount = await Question.count({
-      where: { category_id: id }
-    });
-    if (questionCount > 0) {
-      throw new Error("Cannot delete category with associated questions");
-    }
     const deletedRowsCount = await Category.destroy({
       where: { category_id: id }
     });

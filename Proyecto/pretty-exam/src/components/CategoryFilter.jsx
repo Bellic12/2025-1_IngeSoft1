@@ -10,15 +10,16 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
   const [isCreating, setIsCreating] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [error, setError] = useState('')
+  const [deletingCategory, setDeletingCategory] = useState(null)
+  const [categoryQuestions, setCategoryQuestions] = useState([])
+  const [deleteQuestionsToo, setDeleteQuestionsToo] = useState(false)
 
-  // Fetch categories
   const fetchCategories = async () => {
     setLoading(true)
     try {
       const result = await window.categoryAPI.getAll()
       setCategories(result)
       
-      // Auto-start editing if editingCategoryId is provided and categories just loaded
       if (editingCategoryId && result.length > 0) {
         const category = result.find(c => c.category_id === editingCategoryId)
         if (category) {
@@ -35,43 +36,37 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
 
   useEffect(() => {
     if (isOpen) {
-      console.log('CategoryFilter opening...')
       fetchCategories()
       
-      // Force all existing modals to lower z-index
       setTimeout(() => {
         const allDialogs = document.querySelectorAll('dialog.modal')
         const allModals = document.querySelectorAll('.modal')
         
         allDialogs.forEach(dialog => {
-          if (!dialog.classList.contains('category-filter-modal')) {
+          if (!dialog.hasAttribute('data-category-filter-modal')) {
             dialog.style.zIndex = '1000'
           }
         })
         
         allModals.forEach(modal => {
-          if (!modal.classList.contains('category-filter-modal')) {
+          if (!modal.hasAttribute('data-category-filter-modal')) {
             modal.style.zIndex = '1000'
           }
         })
-        
-        console.log('Z-index adjustments applied')
       }, 10)
     } else {
-      console.log('CategoryFilter closing...')
-      // Reset z-index when closing
       setTimeout(() => {
         const allDialogs = document.querySelectorAll('dialog.modal')
         const allModals = document.querySelectorAll('.modal')
         
         allDialogs.forEach(dialog => {
-          if (!dialog.classList.contains('category-filter-modal')) {
+          if (!dialog.hasAttribute('data-category-filter-modal')) {
             dialog.style.zIndex = ''
           }
         })
         
         allModals.forEach(modal => {
-          if (!modal.classList.contains('category-filter-modal')) {
+          if (!modal.hasAttribute('data-category-filter-modal')) {
             modal.style.zIndex = ''
           }
         })
@@ -79,14 +74,11 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
     }
   }, [isOpen])
 
-  // Handle category selection
   const handleCategoryToggle = (categoryId) => {
     if (singleSelect) {
-      // Single selection mode - only one category can be selected
       const newSelected = selectedCategories.includes(categoryId) ? [] : [categoryId]
       onCategorySelect(newSelected)
     } else {
-      // Multiple selection mode - original behavior
       const newSelected = selectedCategories.includes(categoryId)
         ? selectedCategories.filter(id => id !== categoryId)
         : [...selectedCategories, categoryId]
@@ -95,14 +87,12 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
     }
   }
 
-  // Start editing category
   const startEditing = (category) => {
     setEditingId(category.category_id)
     setEditingName(category.name)
     setError('')
   }
 
-  // Save edited category
   const saveEdit = async () => {
     if (!editingName.trim()) {
       setError('El nombre no puede estar vacío')
@@ -121,14 +111,12 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
     }
   }
 
-  // Cancel editing
   const cancelEdit = () => {
     setEditingId(null)
     setEditingName('')
     setError('')
   }
 
-  // Create new category
   const createCategory = async () => {
     if (!newCategoryName.trim()) {
       setError('El nombre no puede estar vacío')
@@ -147,31 +135,85 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
     }
   }
 
-  // Delete category
-  const deleteCategory = async (categoryId) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta categoría?')) {
-      return
+  const checkCategoryQuestions = async (categoryId) => {
+    try {
+      const questions = await window.questionAPI.getByCategory(categoryId)
+      return questions
+    } catch (err) {
+      console.error('Error fetching category questions:', err)
+      return []
     }
+  }
+
+  const initiateDeleteCategory = async (categoryId) => {
+    setError('')
+    const questions = await checkCategoryQuestions(categoryId)
+    setDeletingCategory(categoryId)
+    setCategoryQuestions(questions)
+    setDeleteQuestionsToo(false)
+  }
+
+  const confirmDeleteCategory = async () => {
+    if (!deletingCategory) return
 
     try {
-      await window.categoryAPI.delete(categoryId)
-      await fetchCategories()
-      // Remove from selected if it was selected
-      if (selectedCategories.includes(categoryId)) {
-        onCategorySelect(selectedCategories.filter(id => id !== categoryId))
+      if (categoryQuestions.length > 0 && deleteQuestionsToo) {
+        for (const question of categoryQuestions) {
+          await window.questionAPI.delete(question.question_id)
+        }
+      } else if (categoryQuestions.length > 0) {
+        for (const question of categoryQuestions) {
+          await window.questionAPI.update(question.question_id, {
+            ...question,
+            category_id: null
+          })
+        }
       }
+
+      await window.categoryAPI.delete(deletingCategory)
+      await fetchCategories()
+      
+      if (selectedCategories.includes(deletingCategory)) {
+        onCategorySelect(selectedCategories.filter(id => id !== deletingCategory))
+      }
+
+      setDeletingCategory(null)
+      setCategoryQuestions([])
+      setDeleteQuestionsToo(false)
     } catch (err) {
-      setError('Error al eliminar categoría. Puede que tenga preguntas asociadas.')
+      setError('Error al eliminar categoría: ' + (err.message || 'Error desconocido'))
       console.error(err)
     }
   }
 
+  const cancelDeleteCategory = () => {
+    setDeletingCategory(null)
+    setCategoryQuestions([])
+    setDeleteQuestionsToo(false)
+  }
+
   if (!isOpen) return null
 
-  // Use createPortal to render above any existing modal with a very high z-index
   const modalElement = (
-    <div className="modal modal-open category-filter-modal">
-      <div className="modal-box w-full max-w-md max-h-[80vh] flex flex-col">
+    <div 
+      className="modal modal-open"
+      data-category-filter-modal="true"
+      style={{
+        zIndex: 999999,
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh'
+      }}
+    >
+      <div 
+        className="modal-box w-full max-w-md max-h-[80vh] flex flex-col"
+        style={{
+          zIndex: 1000000,
+          position: 'relative'
+        }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-base-200">
           <h2 className="text-lg font-semibold">{title}</h2>
@@ -248,7 +290,7 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => deleteCategory(category.category_id)}
+                        onClick={() => initiateDeleteCategory(category.category_id)}
                         className="btn btn-ghost btn-sm btn-square text-error"
                         title="Eliminar categoría"
                       >
@@ -340,10 +382,67 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
       <form method="dialog" className="modal-backdrop">
         <button onClick={onClose}>close</button>
       </form>
+
+      {/* Delete Confirmation Modal */}
+      {deletingCategory && (
+        <div className="modal modal-open" style={{ zIndex: 1000001 }}>
+          <div className="modal-box">
+            <h3 className="font-bold text-lg text-error">Eliminar Categoría</h3>
+            <div className="py-4">
+              {categoryQuestions.length > 0 ? (
+                <div className="space-y-4">
+                  <p>
+                    Esta categoría tiene <strong>{categoryQuestions.length}</strong> pregunta(s) asociada(s).
+                  </p>
+                  <div className="alert alert-warning">
+                    <div className="flex flex-col gap-2">
+                      <span>¿Qué deseas hacer con las preguntas?</span>
+                      <label className="label cursor-pointer justify-start gap-3">
+                        <input
+                          type="checkbox"
+                          className="checkbox checkbox-error"
+                          checked={deleteQuestionsToo}
+                          onChange={(e) => setDeleteQuestionsToo(e.target.checked)}
+                        />
+                        <span className="label-text">
+                          Eliminar también las {categoryQuestions.length} pregunta(s)
+                        </span>
+                      </label>
+                      {!deleteQuestionsToo && (
+                        <div className="text-sm opacity-70 ml-7">
+                          Las preguntas se mantendrán sin categoría
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p>¿Estás seguro de que deseas eliminar esta categoría?</p>
+              )}
+            </div>
+            <div className="modal-action">
+              <button
+                className="btn btn-ghost"
+                onClick={cancelDeleteCategory}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn btn-error"
+                onClick={confirmDeleteCategory}
+              >
+                {categoryQuestions.length > 0 && deleteQuestionsToo
+                  ? `Eliminar categoría y ${categoryQuestions.length} pregunta(s)`
+                  : 'Eliminar categoría'
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 
-  console.log('Rendering CategoryFilter modal with createPortal...')
   return createPortal(modalElement, document.body)
 }
 
