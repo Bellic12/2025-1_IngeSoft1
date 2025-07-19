@@ -20,3 +20,7 @@ ipcMain.handle('questions:delete', async (_, id) => {
 ipcMain.handle('questions:search', async (_, filters) => {
   return await QuestionController.search(filters)
 })
+
+ipcMain.handle('questions:getByCategory', async (_, categoryId) => {
+  return await QuestionController.getByCategory(categoryId)
+})

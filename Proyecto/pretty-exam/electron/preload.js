@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('questionAPI', {
   update: (id, data) => ipcRenderer.invoke('questions:update', id, data),
   delete: id => ipcRenderer.invoke('questions:delete', id),
   search: filters => ipcRenderer.invoke('questions:search', filters),
+  getByCategory: categoryId => ipcRenderer.invoke('questions:getByCategory', categoryId),
 })
 
 // Option API

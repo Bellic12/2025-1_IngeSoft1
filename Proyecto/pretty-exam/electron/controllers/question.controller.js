@@ -179,6 +179,19 @@ const QuestionController = {
     console.log(`Found ${questions.length} questions`)
     return questions.map(q => q.get({ plain: true }))
   },
+
+  // Get questions by category
+  getByCategory: async (categoryId) => {
+    const questions = await Question.findAll({
+      where: { category_id: categoryId },
+      include: [
+        { model: Option, as: 'options' },
+        { model: Category, as: 'category' },
+      ],
+      order: [['question_id', 'DESC']]
+    })
+    return questions.map(q => q.get({ plain: true }))
+  },
 }
 
 export default QuestionController

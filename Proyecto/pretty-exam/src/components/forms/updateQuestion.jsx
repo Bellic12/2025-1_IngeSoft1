@@ -126,11 +126,6 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
     event.preventDefault()
     setFormError('')
     
-    if (!categoryId) {
-      setFormError('Debes seleccionar una categoría')
-      return
-    }
-    
     try {
       const questionObj = QuestionFactory.createQuestion(type, {
         text,
@@ -161,7 +156,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
   }
 
   const getCurrentCategoryName = () => {
-    if (!categoryId) return 'Seleccionar categoría'
+    if (!categoryId) return 'Sin categoría'
     const category = categories.find(c => c.category_id === categoryId)
     return category?.name || 'Categoría seleccionada'
   }
@@ -170,6 +165,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
     setText(originalState.current.text)
     setType(originalState.current.type)
     setOptions(originalState.current.options)
+    setCategoryId(originalState.current.categoryId)
     setLoading(false)
     setFormError('')
   }
@@ -243,7 +239,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  className={`btn flex-1 justify-start ${categoryId ? 'btn-outline' : 'btn-outline btn-error'}`}
+                  className="btn btn-error text-white flex-1 justify-start"
                   onClick={() => {
                     setModalWasOpen(true)
                     document.getElementById('modal_update_question' + question.question_id).close()

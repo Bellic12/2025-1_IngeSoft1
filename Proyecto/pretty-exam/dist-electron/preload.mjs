@@ -23,7 +23,8 @@ electron.contextBridge.exposeInMainWorld("questionAPI", {
   create: (data) => electron.ipcRenderer.invoke("questions:create", data),
   update: (id, data) => electron.ipcRenderer.invoke("questions:update", id, data),
   delete: (id) => electron.ipcRenderer.invoke("questions:delete", id),
-  search: (filters) => electron.ipcRenderer.invoke("questions:search", filters)
+  search: (filters) => electron.ipcRenderer.invoke("questions:search", filters),
+  getByCategory: (categoryId) => electron.ipcRenderer.invoke("questions:getByCategory", categoryId)
 });
 electron.contextBridge.exposeInMainWorld("optionAPI", {
   getAll: () => electron.ipcRenderer.invoke("options:getAll"),
