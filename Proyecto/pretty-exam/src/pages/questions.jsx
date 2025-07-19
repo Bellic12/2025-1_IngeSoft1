@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Search, Filter } from 'lucide-react'
+import { Search, Filter, Wand2 } from 'lucide-react'
 import Question from '../components/question'
 import CreateQuestion from '../components/forms/createQuestion'
 import CategoryFilter from '../components/CategoryFilter'
+import AIQuestionGenerator from '../components/aiQuestionGenerator'
 
 const Questions = () => {
   const [questions, setQuestions] = useState([])
@@ -11,6 +12,7 @@ const Questions = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategories, setSelectedCategories] = useState([])
   const [showCategoryFilter, setShowCategoryFilter] = useState(false)
+  const [showAIGenerator, setShowAIGenerator] = useState(false)
 
   const fetchQuestions = async (filters = {}) => {
     setLoading(true)
@@ -89,6 +91,12 @@ const Questions = () => {
               <span className="badge badge-primary badge-sm ml-2">{selectedCategories.length}</span>
             )}
           </button>
+
+          {/* AI Generator button */}
+          <button className="btn btn-primary" onClick={() => setShowAIGenerator(true)}>
+            <Wand2 className="w-4 h-4 mr-2" />
+            Generar con IA
+          </button>
         </div>
       </div>
 
@@ -126,6 +134,37 @@ const Questions = () => {
         onClose={() => setShowCategoryFilter(false)}
         selectedCategories={selectedCategories}
         onCategorySelect={setSelectedCategories}
+      />
+
+      {/* AI Question Generator Modal */}
+      <AIQuestionGenerator
+        isOpen={showAIGenerator}
+        onClose={() => setShowAIGenerator(false)}
+        onQuestionsGenerated={async generatedQuestions => {
+          try {
+            for (const question of generatedQuestions) {
+              // Crear la pregunta con los campos correctos de la BD
+              const newQuestion = await window.questionAPI.create({
+                text: question.text,
+                type: question.type,
+                category_id: question.category,
+                source: 'AI', // Indicar que fue generada por IA
+                options: question.options.map(opt => ({
+                  text: opt.text,
+                  is_correct: opt.is_correct
+                }))
+              })
+            }
+            
+            // Actualizar la lista de preguntas
+            fetchQuestions({
+              searchTerm: searchTerm.trim(),
+              categoryIds: selectedCategories,
+            })
+          } catch (error) {
+            setError(error.message)
+          }
+        }}
       />
     </div>
   )

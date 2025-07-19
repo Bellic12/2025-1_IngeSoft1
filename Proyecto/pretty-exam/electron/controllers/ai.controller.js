@@ -3,6 +3,7 @@ import OptionController from './option.controller'
 import ExamController from './exam.controller'
 import ResultController from './result.controller'
 import { boldMarkdownToHtml } from '../utils/markdown'
+import { readPdfText } from '../utils/pdfUtils' // Asumiendo que crearemos esta utilidad
 const apiKey = null
 
 if (!apiKey) {
@@ -10,6 +11,102 @@ if (!apiKey) {
 }
 
 const AIController = {
+  // Método para generar preguntas a partir de un PDF
+  generateQuestionsFromPDF: async (pdfBuffer, config) => {
+    if (!apiKey) {
+      throw new Error('Gemini API key is not set.')
+    }
+
+    try {
+      // Extraer texto del PDF
+      const text = await readPdfText(pdfBuffer)
+
+      // Construir el prompt para Gemini
+      const prompt = `
+        Actúa como un profesor experto y genera preguntas de examen basadas en el siguiente texto:
+        "${text}"
+
+        Requisitos:
+        - Generar ${config.multipleChoice} preguntas de opción múltiple
+        - Generar ${config.trueFalse} preguntas de verdadero/falso
+        - Nivel de dificultad: ${config.difficulty}
+        - Categoría: ${config.category}
+
+        Las preguntas deben seguir este formato JSON exacto:
+        {
+          "questions": [
+            {
+              "text": "Pregunta clara y concisa",
+              "type": "${config.multipleChoice > 0 ? 'multiple_choice' : 'true_false'}",
+              "difficulty": "${config.difficulty}",
+              "category_id": "${config.category}",
+              "points": ${config.difficulty === 'facil' ? 10 : config.difficulty === 'medio' ? 15 : 20},
+              "explanation": "Explicación breve de por qué la respuesta es correcta",
+              "options": [
+                {
+                  "text": "Opción correcta",
+                  "is_correct": true
+                },
+                {
+                  "text": "Opción incorrecta 1",
+                  "is_correct": false
+                },
+                {
+                  "text": "Opción incorrecta 2",
+                  "is_correct": false
+                },
+                {
+                  "text": "Opción incorrecta 3",
+                  "is_correct": false
+                }
+              ]
+            }
+          ]
+        }
+        
+        IMPORTANTE:
+        1. El campo "text" debe contener la pregunta
+        2. Para preguntas true_false, incluir solo dos options con is_correct true o false
+        3. Los campos deben coincidir exactamente con los nombres especificados
+        4. Mantén las respuestas concisas y claras
+        5. Genera EXACTAMENTE el número de preguntas solicitado de cada tipo
+      `
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`
+      const body = {
+        contents: [{ parts: [{ text: prompt }] }]
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body)
+      })
+
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+      
+      if (!generatedText) {
+        throw new Error('No se pudo generar el contenido')
+      }
+
+      try {
+        const parsedQuestions = JSON.parse(generatedText)
+        return parsedQuestions.questions
+      } catch (error) {
+        throw new Error('Error al parsear las preguntas generadas')
+      }
+    } catch (error) {
+      throw new Error(`Error al generar preguntas: ${error.message}`)
+    }
+  },
+
   explainQuestion: async (questionId, optionSelectedId) => {
     if (!apiKey) {
       throw new Error('Gemini API key is not set.')
