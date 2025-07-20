@@ -29,6 +29,30 @@ Queremos que cada persona pueda crear sus propios bancos de preguntas organizado
 
 ---
 
+## ⚙️ Requisitos
+
+- [Node.js](https://nodejs.org/) (v18 o superior)
+- [npm](https://www.npmjs.com/) (v9 o superior)
+- [SQLite3](https://www.sqlite.org/download.html)
+
+---
+
+## 🚀 Instrucciones de ejecución
+
+1. Abre una terminal y navega al directorio `Proyecto/pretty-exam`.
+2. Ejecuta el script de configuración según tu sistema operativo:
+   - **Windows:**
+     ```powershell
+     ./setup_env.bat
+     ```
+   - **Linux/Mac:**
+     ```bash
+     ./setup_env.sh
+     ```
+3. Este script verificará los requisitos, instalará dependencias y ejecutará el proyecto en modo desarrollador.
+
+---
+
 Gracias por visitar nuestro proyecto. Si tienes alguna sugerencia no dudes en decírnosla. 
 
 

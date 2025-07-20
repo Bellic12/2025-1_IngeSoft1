@@ -10,7 +10,8 @@
     "build": "vite build && npm run rebuild && electron-builder",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "tests": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
+    "tests": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
+    "setup-dev": "npm install && npm run dev"
   },
   "dependencies": {
     "@rollup/plugin-commonjs": "^28.0.6",
