@@ -40,10 +40,6 @@ const ExamSimulation = () => {
     fetchData()
   }, [])
 
-  useEffect(() => {
-    console.log(userAnswers)
-  }, [userAnswers])
-
   const fetchExam = async () => {
     try {
       const examData = await window.examAPI.getById(id)

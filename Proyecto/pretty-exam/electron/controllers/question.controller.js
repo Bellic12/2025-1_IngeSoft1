@@ -137,7 +137,6 @@ const QuestionController = {
       })
 
       await t.commit()
-      console.log(`Question ${id} updated successfully`)
       return true
     } catch (err) {
       await t.rollback()
@@ -168,7 +167,6 @@ const QuestionController = {
   },
 
   search: async (filters = {}) => {
-    console.log('QuestionController.search called with filters:', filters)
     const { searchTerm, categoryIds } = filters
 
     const normalizeSearchTerm = text => {
@@ -279,7 +277,6 @@ const QuestionController = {
         order: [['question_id', 'DESC']],
       })
 
-      console.log(`Found ${questions.length} questions matching search criteria`)
       return questions.map(q => q.get({ plain: true }))
     } catch (error) {
       console.error('Error in question search:', error)
