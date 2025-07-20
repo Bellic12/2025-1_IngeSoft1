@@ -27,7 +27,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
   const [categoryId, setCategoryId] = useState(null)
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(false)
-  const [formError, setFormError] = useState('')
+  const [, setFormError] = useState('')
   const [showCategorySelector, setShowCategorySelector] = useState(false)
   const [editingCategoryId, setEditingCategoryId] = useState(null)
   const [modalWasOpen, setModalWasOpen] = useState(false)
@@ -86,7 +86,6 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
       }
       return prevOptions
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type])
 
   const handleOnChangeType = event => {
@@ -125,7 +124,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
   const handleSubmit = async event => {
     event.preventDefault()
     setFormError('')
-    
+
     try {
       const questionObj = QuestionFactory.createQuestion(type, {
         text,
@@ -135,10 +134,10 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
           is_correct: opt.isCorrect,
         })),
       })
-      
+
       questionObj.validate()
       setLoading(true)
-      
+
       // Send clean data without option_id to avoid foreign key issues
       const updateData = {
         text,
@@ -149,7 +148,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
           is_correct: opt.isCorrect,
         })),
       }
-      
+
       await window.questionAPI.update(question.question_id, updateData)
       toast.success('Pregunta actualizada correctamente')
       fetchQuestions()
@@ -157,10 +156,10 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
       setLoading(false)
     } catch (error) {
       console.error('Error updating question:', error)
-      
+
       // Handle specific error types with user-friendly messages
       let userMessage = 'Error al actualizar la pregunta'
-      
+
       if (error.message === 'CATEGORY_NOT_FOUND') {
         userMessage = 'La categoría seleccionada no existe. Por favor, selecciona otra categoría.'
       } else if (error.message === 'QUESTION_NOT_FOUND') {
@@ -168,7 +167,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
       } else if (error.message === 'UPDATE_FAILED') {
         userMessage = 'No se pudo actualizar la pregunta. Inténtalo de nuevo.'
       }
-      
+
       // Don't show technical errors in the form, only in console
       setFormError('')
       toast.error(userMessage)
@@ -277,7 +276,9 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
                       onClick={() => {
                         setEditingCategoryId(categoryId)
                         setModalWasOpen(true)
-                        document.getElementById('modal_update_question' + question.question_id).close()
+                        document
+                          .getElementById('modal_update_question' + question.question_id)
+                          .close()
                         setTimeout(() => setShowCategorySelector(true), 100)
                       }}
                       title="Editar categoría"
@@ -400,7 +401,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
           }
         }}
         selectedCategories={categoryId ? [categoryId] : []}
-        onCategorySelect={async (categories) => {
+        onCategorySelect={async categories => {
           setCategoryId(categories[0] || null)
           setShowCategorySelector(false)
           setEditingCategoryId(null)

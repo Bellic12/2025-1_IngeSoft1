@@ -23,7 +23,7 @@ describe('validateQuestion', () => {
 
     const result = validateQuestion(validQuestion)
     expect(result.isValid).toBe(true)
-    expect(result.errors.length).toBe(0)
+    expect(result.errors).toHaveLength(0)
   })
 
   test('debería validar pregunta válida de verdadero/falso', () => {
@@ -39,7 +39,7 @@ describe('validateQuestion', () => {
 
     const result = validateQuestion(validQuestion)
     expect(result.isValid).toBe(true)
-    expect(result.errors.length).toBe(0)
+    expect(result.errors).toHaveLength(0)
   })
 
   test('debería fallar con datos nulos', () => {
@@ -94,7 +94,7 @@ describe('validateOptions', () => {
     ]
 
     const result = validateOptions(validOptions, 'multiple_choice')
-    expect(result.length).toBe(0)
+    expect(result).toHaveLength(0)
   })
 
   test('debería fallar con opciones duplicadas', () => {
@@ -149,7 +149,7 @@ describe('validateQuestionId', () => {
   test('debería validar ID válido', () => {
     const result = validateQuestionId(1)
     expect(result.isValid).toBe(true)
-    expect(result.errors.length).toBe(0)
+    expect(result.errors).toHaveLength(0)
   })
 
   test('debería fallar con ID inválido', () => {

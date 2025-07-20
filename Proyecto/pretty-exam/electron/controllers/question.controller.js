@@ -1,5 +1,5 @@
 import sequelize from '../config/database'
-import { Question, Option, Category, UserAnswer } from '../models/index'
+import { Question, Option, Category } from '../models/index'
 import { Op } from 'sequelize'
 
 const QuestionController = {
@@ -77,9 +77,9 @@ const QuestionController = {
         throw new Error('QUESTION_NOT_FOUND')
       }
 
-      await sequelize.query('PRAGMA foreign_keys = OFF', { 
+      await sequelize.query('PRAGMA foreign_keys = OFF', {
         transaction: t,
-        type: sequelize.QueryTypes.RAW 
+        type: sequelize.QueryTypes.RAW,
       })
 
       const existingOptions = await sequelize.query(
@@ -87,7 +87,7 @@ const QuestionController = {
         {
           replacements: [id],
           transaction: t,
-          type: sequelize.QueryTypes.SELECT
+          type: sequelize.QueryTypes.SELECT,
         }
       )
 
@@ -98,19 +98,16 @@ const QuestionController = {
           {
             replacements: optionIds,
             transaction: t,
-            type: sequelize.QueryTypes.DELETE
+            type: sequelize.QueryTypes.DELETE,
           }
         )
       }
 
-      await sequelize.query(
-        'DELETE FROM `Option` WHERE `question_id` = ?',
-        {
-          replacements: [id],
-          transaction: t,
-          type: sequelize.QueryTypes.DELETE
-        }
-      )
+      await sequelize.query('DELETE FROM `Option` WHERE `question_id` = ?', {
+        replacements: [id],
+        transaction: t,
+        type: sequelize.QueryTypes.DELETE,
+      })
 
       await Question.update(
         {
@@ -123,17 +120,20 @@ const QuestionController = {
 
       if (data.options && data.options.length > 0) {
         for (const opt of data.options) {
-          await Option.create({
-            text: opt.text,
-            is_correct: opt.is_correct,
-            question_id: id,
-          }, { transaction: t })
+          await Option.create(
+            {
+              text: opt.text,
+              is_correct: opt.is_correct,
+              question_id: id,
+            },
+            { transaction: t }
+          )
         }
       }
 
-      await sequelize.query('PRAGMA foreign_keys = ON', { 
+      await sequelize.query('PRAGMA foreign_keys = ON', {
         transaction: t,
-        type: sequelize.QueryTypes.RAW 
+        type: sequelize.QueryTypes.RAW,
       })
 
       await t.commit()
@@ -142,23 +142,23 @@ const QuestionController = {
     } catch (err) {
       await t.rollback()
       console.error('Error updating question:', err)
-      
+
       if (err.name === 'SequelizeForeignKeyConstraintError') {
         console.error('Foreign key constraint error details:', {
           sql: err.sql,
           original: err.original?.message,
           table: err.table,
-          fields: err.fields
+          fields: err.fields,
         })
       }
-      
+
       if (err.message === 'CATEGORY_NOT_FOUND') {
         throw new Error('CATEGORY_NOT_FOUND')
       }
       if (err.message === 'QUESTION_NOT_FOUND') {
         throw new Error('QUESTION_NOT_FOUND')
       }
-      
+
       throw new Error('UPDATE_FAILED')
     }
   },
@@ -170,8 +170,8 @@ const QuestionController = {
   search: async (filters = {}) => {
     console.log('QuestionController.search called with filters:', filters)
     const { searchTerm, categoryIds } = filters
-    
-    const normalizeSearchTerm = (text) => {
+
+    const normalizeSearchTerm = text => {
       if (!text || typeof text !== 'string') {
         return ''
       }
@@ -181,47 +181,77 @@ const QuestionController = {
         .replace(/[\u0300-\u036f]/g, '')
         .trim()
     }
-    
+
     try {
       let whereClause = {}
 
       if (categoryIds && categoryIds.length > 0) {
         whereClause.category_id = {
-          [Op.in]: categoryIds
+          [Op.in]: categoryIds,
         }
       }
 
       if (searchTerm && searchTerm.trim()) {
         const normalizedSearchTerm = normalizeSearchTerm(searchTerm)
         const searchConditions = []
-        
+
         searchConditions.push({
           text: sequelize.where(
-            sequelize.fn('LOWER', 
-              sequelize.fn('REPLACE',
-                sequelize.fn('REPLACE',
-                  sequelize.fn('REPLACE',
-                    sequelize.fn('REPLACE',
-                      sequelize.fn('REPLACE',
-                        sequelize.col('Question.text'),
-                        'á', 'a'), 'é', 'e'), 'í', 'i'), 'ó', 'o'), 'ú', 'u')
+            sequelize.fn(
+              'LOWER',
+              sequelize.fn(
+                'REPLACE',
+                sequelize.fn(
+                  'REPLACE',
+                  sequelize.fn(
+                    'REPLACE',
+                    sequelize.fn(
+                      'REPLACE',
+                      sequelize.fn('REPLACE', sequelize.col('Question.text'), 'á', 'a'),
+                      'é',
+                      'e'
+                    ),
+                    'í',
+                    'i'
+                  ),
+                  'ó',
+                  'o'
+                ),
+                'ú',
+                'u'
+              )
             ),
             'LIKE',
             `%${normalizedSearchTerm}%`
-          )
+          ),
         })
 
         if (!categoryIds || categoryIds.length === 0) {
           searchConditions.push(
             sequelize.where(
-              sequelize.fn('LOWER', 
-                sequelize.fn('REPLACE',
-                  sequelize.fn('REPLACE',
-                    sequelize.fn('REPLACE',
-                      sequelize.fn('REPLACE',
-                        sequelize.fn('REPLACE',
-                          sequelize.col('category.name'),
-                          'á', 'a'), 'é', 'e'), 'í', 'i'), 'ó', 'o'), 'ú', 'u')
+              sequelize.fn(
+                'LOWER',
+                sequelize.fn(
+                  'REPLACE',
+                  sequelize.fn(
+                    'REPLACE',
+                    sequelize.fn(
+                      'REPLACE',
+                      sequelize.fn(
+                        'REPLACE',
+                        sequelize.fn('REPLACE', sequelize.col('category.name'), 'á', 'a'),
+                        'é',
+                        'e'
+                      ),
+                      'í',
+                      'i'
+                    ),
+                    'ó',
+                    'o'
+                  ),
+                  'ú',
+                  'u'
+                )
               ),
               'LIKE',
               `%${normalizedSearchTerm}%`
@@ -230,10 +260,10 @@ const QuestionController = {
         }
 
         const searchClause = { [Op.or]: searchConditions }
-        
+
         if (Object.keys(whereClause).length > 0) {
           whereClause = {
-            [Op.and]: [whereClause, searchClause]
+            [Op.and]: [whereClause, searchClause],
           }
         } else {
           whereClause = searchClause
@@ -246,26 +276,25 @@ const QuestionController = {
           { model: Option, as: 'options' },
           { model: Category, as: 'category' },
         ],
-        order: [['question_id', 'DESC']]
+        order: [['question_id', 'DESC']],
       })
 
       console.log(`Found ${questions.length} questions matching search criteria`)
       return questions.map(q => q.get({ plain: true }))
-      
     } catch (error) {
       console.error('Error in question search:', error)
       return []
     }
   },
 
-  getByCategory: async (categoryId) => {
+  getByCategory: async categoryId => {
     const questions = await Question.findAll({
       where: { category_id: categoryId },
       include: [
         { model: Option, as: 'options' },
         { model: Category, as: 'category' },
       ],
-      order: [['question_id', 'DESC']]
+      order: [['question_id', 'DESC']],
     })
     return questions.map(q => q.get({ plain: true }))
   },

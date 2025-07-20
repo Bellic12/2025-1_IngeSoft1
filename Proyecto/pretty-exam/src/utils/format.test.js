@@ -1,9 +1,4 @@
-import {
-  formatTimeSeconds,
-  formatTimeString,
-  formatMinutes,
-  formatDate,
-} from './format.js'
+import { formatTimeSeconds, formatTimeString, formatMinutes, formatDate } from './format.js'
 
 describe('formatTimeSeconds', () => {
   test('debería formatear segundos a hh:mm:ss si hay horas', () => {

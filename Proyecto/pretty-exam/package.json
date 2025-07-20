@@ -4,13 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "npm run tests && vite",
     "postinstall": "electron-rebuild && electron-builder install-app-deps",
     "rebuild": "electron-rebuild",
     "build": "vite build && npm run rebuild && electron-builder",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "tests": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watchAll --coverage"
+    "tests": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
   },
   "dependencies": {
     "@rollup/plugin-commonjs": "^28.0.6",

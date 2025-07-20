@@ -18,7 +18,7 @@ describe('validateCategory', () => {
 
     const result = validateCategory(validCategory)
     expect(result.isValid).toBe(true)
-    expect(result.errors.length).toBe(0)
+    expect(result.errors).toHaveLength(0)
   })
 
   test('debería validar categoría con caracteres especiales', () => {
@@ -28,7 +28,7 @@ describe('validateCategory', () => {
 
     const result = validateCategory(validCategory)
     expect(result.isValid).toBe(true)
-    expect(result.errors.length).toBe(0)
+    expect(result.errors).toHaveLength(0)
   })
 
   test('debería fallar con datos nulos', () => {
@@ -89,7 +89,7 @@ describe('validateCategoryId', () => {
   test('debería validar ID válido', () => {
     const result = validateCategoryId(1)
     expect(result.isValid).toBe(true)
-    expect(result.errors.length).toBe(0)
+    expect(result.errors).toHaveLength(0)
   })
 
   test('debería fallar con ID inválido', () => {

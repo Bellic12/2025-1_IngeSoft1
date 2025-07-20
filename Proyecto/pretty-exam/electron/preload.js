@@ -80,7 +80,8 @@ contextBridge.exposeInMainWorld('resultAPI', {
 // UserAnswer API
 contextBridge.exposeInMainWorld('userAnswerAPI', {
   getAll: () => ipcRenderer.invoke('userAnswers:getAll'),
-  getById: (resultId, questionId) => ipcRenderer.invoke('userAnswers:getById', resultId, questionId),
+  getById: (resultId, questionId) =>
+    ipcRenderer.invoke('userAnswers:getById', resultId, questionId),
   create: data => ipcRenderer.invoke('userAnswers:create', data),
   delete: (resultId, questionId) => ipcRenderer.invoke('userAnswers:delete', resultId, questionId),
 })

@@ -19,7 +19,7 @@ describe('validateExam', () => {
 
     const result = validateExam(validExam)
     expect(result.isValid).toBe(true)
-    expect(result.errors.length).toBe(0)
+    expect(result.errors).toHaveLength(0)
   })
 
   test('debería validar examen válido mínimo', () => {
@@ -31,7 +31,7 @@ describe('validateExam', () => {
 
     const result = validateExam(validExam)
     expect(result.isValid).toBe(true)
-    expect(result.errors.length).toBe(0)
+    expect(result.errors).toHaveLength(0)
   })
 
   test('debería fallar con datos nulos', () => {
@@ -119,13 +119,13 @@ describe('validateExamId', () => {
   test('debería validar ID válido', () => {
     const result = validateExamId(1)
     expect(result.isValid).toBe(true)
-    expect(result.errors.length).toBe(0)
+    expect(result.errors).toHaveLength(0)
   })
 
   test('debería validar ID como string numérico', () => {
     const result = validateExamId('5')
     expect(result.isValid).toBe(true)
-    expect(result.errors.length).toBe(0)
+    expect(result.errors).toHaveLength(0)
   })
 
   test('debería fallar con ID inválido', () => {
@@ -152,7 +152,7 @@ describe('validateExamWithQuestions', () => {
 
     const result = validateExamWithQuestions(validExam, questionIds)
     expect(result.isValid).toBe(true)
-    expect(result.errors.length).toBe(0)
+    expect(result.errors).toHaveLength(0)
   })
 
   test('debería fallar con array de preguntas vacío', () => {
