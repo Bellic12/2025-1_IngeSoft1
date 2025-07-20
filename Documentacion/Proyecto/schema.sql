@@ -1,3 +1,4 @@
+BEGIN TRANSACTION;
 -- Category table
 CREATE TABLE Category (
     category_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,5 +67,6 @@ CREATE TABLE UserAnswer (
     PRIMARY KEY (result_id, question_id),
     FOREIGN KEY (result_id) REFERENCES Result(result_id) ON DELETE CASCADE,
     FOREIGN KEY (question_id) REFERENCES Question(question_id) ON DELETE CASCADE,
-    FOREIGN KEY (option_id) REFERENCES Option(option_id)
+    FOREIGN KEY (option_id) REFERENCES Option(option_id) ON DELETE CASCADE
 );
+COMMIT;
