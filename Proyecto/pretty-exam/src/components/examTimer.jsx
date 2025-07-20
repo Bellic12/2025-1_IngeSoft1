@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Clock, AlertTriangle } from 'lucide-react'
-import { formatTime } from '../utils/formatTime'
+import { formatTimeSeconds } from '../utils/format'
 
 const ExamTimer = ({ timeLimit, onTimeUp, onFiveMinuteWarning, onOneMinuteWarning }) => {
   const [timeLeft, setTimeLeft] = useState(timeLimit * 60)
@@ -48,7 +48,7 @@ const ExamTimer = ({ timeLimit, onTimeUp, onFiveMinuteWarning, onOneMinuteWarnin
       <Clock className={`w-5 h-5 ${getTimerColor()}`} />
       <div className="flex flex-col">
         <span className={`font-mono text-lg font-bold ${getTimerColor()}`}>
-          {formatTime(timeLeft)}
+          {formatTimeSeconds(timeLeft)}
         </span>
         <progress
           className={`progress w-24 h-2 ${timeLeft <= 300 ? 'progress-error' : 'progress-primary'}`}

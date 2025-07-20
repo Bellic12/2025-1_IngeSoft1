@@ -3,27 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Calendar, Clock } from 'lucide-react'
 
 import { toast } from 'react-toastify'
-
-const formatMinutes = minutes => {
-  if (minutes === 0) return '0:00'
-  if (!minutes || isNaN(minutes)) return 'N/A'
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return `${h}:${m.toString().padStart(2, '0')}`
-}
-
-const formatDate = dateStr => {
-  if (!dateStr) return 'N/A'
-  const date = new Date(dateStr)
-  const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
-  return date.toLocaleDateString('es-ES', options)
-}
-
-const formatTime = dateStr => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-}
+import { formatDate, formatMinutes, formatTimeString } from '../utils/format'
 
 const ExamHistory = () => {
   const { id } = useParams()
@@ -156,7 +136,7 @@ const ExamHistory = () => {
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
-                        <span>{formatTime(result.taken_at)}</span>
+                        <span>{formatTimeString(result.taken_at)}</span>
                       </div>
                     </div>
                   </div>

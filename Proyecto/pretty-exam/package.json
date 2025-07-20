@@ -9,7 +9,8 @@
     "rebuild": "electron-rebuild",
     "build": "vite build && npm run rebuild && electron-builder",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "tests": "jest --watchAll --coverage"
   },
   "dependencies": {
     "@rollup/plugin-commonjs": "^28.0.6",
@@ -41,6 +42,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "jest": "^30.0.4",
     "prettier": "^3.5.3",
     "vite": "^6.3.5",
     "vite-plugin-electron": "^0.28.6",
