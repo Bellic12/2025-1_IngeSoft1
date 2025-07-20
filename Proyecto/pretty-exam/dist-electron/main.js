@@ -173,7 +173,6 @@ Exam.associate && Exam.associate();
 Result.associate && Result.associate();
 UserAnswer.associate && UserAnswer.associate();
 const QuestionController = {
-  // Get questions with options and category
   getAll: async () => {
     const questions = await Question.findAll({
       include: [
@@ -183,7 +182,6 @@ const QuestionController = {
     });
     return questions.map((q) => q.get({ plain: true }));
   },
-  // Get a question by ID with options and category
   getById: async (id) => {
     const question = await Question.findOne({
       where: { question_id: id },
@@ -197,7 +195,6 @@ const QuestionController = {
     }
     return question.get({ plain: true });
   },
-  // Create a new question with options
   create: async (data) => {
     const t = await sequelize.transaction();
     try {
@@ -226,10 +223,55 @@ const QuestionController = {
       throw err;
     }
   },
-  // Update an existing question and its options
   update: async (id, data) => {
+    var _a;
     const t = await sequelize.transaction();
     try {
+      if (data.category_id) {
+        const categoryExists = await Category.findByPk(data.category_id, { transaction: t });
+        if (!categoryExists) {
+          await t.rollback();
+          console.error(`Category with ID ${data.category_id} does not exist`);
+          throw new Error("CATEGORY_NOT_FOUND");
+        }
+      }
+      const existingQuestion = await Question.findByPk(id, { transaction: t });
+      if (!existingQuestion) {
+        await t.rollback();
+        console.error(`Question with ID ${id} does not exist`);
+        throw new Error("QUESTION_NOT_FOUND");
+      }
+      await sequelize.query("PRAGMA foreign_keys = OFF", {
+        transaction: t,
+        type: sequelize.QueryTypes.RAW
+      });
+      const existingOptions = await sequelize.query(
+        "SELECT option_id FROM `Option` WHERE `question_id` = ?",
+        {
+          replacements: [id],
+          transaction: t,
+          type: sequelize.QueryTypes.SELECT
+        }
+      );
+      if (existingOptions.length > 0) {
+        const optionIds = existingOptions.map((opt) => opt.option_id);
+        await sequelize.query(
+          `DELETE FROM \`UserAnswer\` WHERE \`option_id\` IN (${optionIds.map(() => "?").join(",")})`,
+          {
+            replacements: optionIds,
+            transaction: t,
+            type: sequelize.QueryTypes.DELETE
+          }
+        );
+      }
+      await sequelize.query(
+        "DELETE FROM `Option` WHERE `question_id` = ?",
+        {
+          replacements: [id],
+          transaction: t,
+          type: sequelize.QueryTypes.DELETE
+        }
+      );
       await Question.update(
         {
           text: data.text,
@@ -238,96 +280,160 @@ const QuestionController = {
         },
         { where: { question_id: id }, transaction: t }
       );
-      const currentOptions = await Option.findAll({
-        where: { question_id: id },
-        transaction: t
+      if (data.options && data.options.length > 0) {
+        for (const opt of data.options) {
+          await Option.create({
+            text: opt.text,
+            is_correct: opt.is_correct,
+            question_id: id
+          }, { transaction: t });
+        }
+      }
+      await sequelize.query("PRAGMA foreign_keys = ON", {
+        transaction: t,
+        type: sequelize.QueryTypes.RAW
       });
-      for (const opt of data.options) {
-        if (opt.option_id) {
-          await Option.update(
-            {
-              text: opt.text,
-              is_correct: opt.is_correct
-            },
-            { where: { option_id: opt.option_id }, transaction: t }
-          );
-        } else {
-          await Option.create(
-            {
-              text: opt.text,
-              is_correct: opt.is_correct,
-              question_id: id
-            },
-            { transaction: t }
-          );
-        }
-      }
-      const receivedIds = data.options.filter((o) => o.option_id).map((o) => o.option_id);
-      for (const opt of currentOptions) {
-        if (!receivedIds.includes(opt.option_id)) {
-          await Option.destroy({ where: { option_id: opt.option_id }, transaction: t });
-        }
-      }
       await t.commit();
+      console.log(`Question ${id} updated successfully`);
       return true;
     } catch (err) {
       await t.rollback();
-      throw err;
+      console.error("Error updating question:", err);
+      if (err.name === "SequelizeForeignKeyConstraintError") {
+        console.error("Foreign key constraint error details:", {
+          sql: err.sql,
+          original: (_a = err.original) == null ? void 0 : _a.message,
+          table: err.table,
+          fields: err.fields
+        });
+      }
+      if (err.message === "CATEGORY_NOT_FOUND") {
+        throw new Error("CATEGORY_NOT_FOUND");
+      }
+      if (err.message === "QUESTION_NOT_FOUND") {
+        throw new Error("QUESTION_NOT_FOUND");
+      }
+      throw new Error("UPDATE_FAILED");
     }
   },
-  // Delete a question by ID
   delete: async (id) => {
     return await Question.destroy({ where: { question_id: id } });
   },
-  // Search questions with filters
   search: async (filters = {}) => {
     console.log("QuestionController.search called with filters:", filters);
     const { searchTerm, categoryIds } = filters;
-    let whereClause = {};
-    if (categoryIds && categoryIds.length > 0) {
-      whereClause.category_id = {
-        [Op.in]: categoryIds
-      };
-      console.log("Added category filter:", whereClause.category_id);
-    }
-    let searchConditions = [];
-    if (searchTerm && searchTerm.trim()) {
-      searchConditions = [
-        // Search in question text
-        { text: { [Op.iLike]: `%${searchTerm.trim()}%` } },
-        // Search in category name
-        { "$category.name$": { [Op.iLike]: `%${searchTerm.trim()}%` } }
-      ];
-      console.log("Added search conditions for term:", searchTerm.trim());
-    }
-    if (searchConditions.length > 0) {
-      if (Object.keys(whereClause).length > 0) {
-        whereClause = {
-          [Op.and]: [
-            whereClause,
-            { [Op.or]: searchConditions }
-          ]
-        };
-      } else {
-        whereClause = {
-          [Op.or]: searchConditions
+    const normalizeSearchTerm = (text) => {
+      if (!text || typeof text !== "string") {
+        return "";
+      }
+      return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    };
+    try {
+      let whereClause = {};
+      if (categoryIds && categoryIds.length > 0) {
+        whereClause.category_id = {
+          [Op.in]: categoryIds
         };
       }
+      if (searchTerm && searchTerm.trim()) {
+        const normalizedSearchTerm = normalizeSearchTerm(searchTerm);
+        const searchConditions = [];
+        searchConditions.push({
+          text: sequelize.where(
+            sequelize.fn(
+              "LOWER",
+              sequelize.fn(
+                "REPLACE",
+                sequelize.fn(
+                  "REPLACE",
+                  sequelize.fn(
+                    "REPLACE",
+                    sequelize.fn(
+                      "REPLACE",
+                      sequelize.fn(
+                        "REPLACE",
+                        sequelize.col("Question.text"),
+                        "á",
+                        "a"
+                      ),
+                      "é",
+                      "e"
+                    ),
+                    "í",
+                    "i"
+                  ),
+                  "ó",
+                  "o"
+                ),
+                "ú",
+                "u"
+              )
+            ),
+            "LIKE",
+            `%${normalizedSearchTerm}%`
+          )
+        });
+        if (!categoryIds || categoryIds.length === 0) {
+          searchConditions.push(
+            sequelize.where(
+              sequelize.fn(
+                "LOWER",
+                sequelize.fn(
+                  "REPLACE",
+                  sequelize.fn(
+                    "REPLACE",
+                    sequelize.fn(
+                      "REPLACE",
+                      sequelize.fn(
+                        "REPLACE",
+                        sequelize.fn(
+                          "REPLACE",
+                          sequelize.col("category.name"),
+                          "á",
+                          "a"
+                        ),
+                        "é",
+                        "e"
+                      ),
+                      "í",
+                      "i"
+                    ),
+                    "ó",
+                    "o"
+                  ),
+                  "ú",
+                  "u"
+                )
+              ),
+              "LIKE",
+              `%${normalizedSearchTerm}%`
+            )
+          );
+        }
+        const searchClause = { [Op.or]: searchConditions };
+        if (Object.keys(whereClause).length > 0) {
+          whereClause = {
+            [Op.and]: [whereClause, searchClause]
+          };
+        } else {
+          whereClause = searchClause;
+        }
+      }
+      const questions = await Question.findAll({
+        where: whereClause,
+        include: [
+          { model: Option, as: "options" },
+          { model: Category, as: "category" }
+        ],
+        order: [["question_id", "DESC"]]
+      });
+      console.log(`Found ${questions.length} questions matching search criteria`);
+      return questions.map((q) => q.get({ plain: true }));
+    } catch (error) {
+      console.error("Error in question search:", error);
+      return [];
     }
-    console.log("Final where clause:", JSON.stringify(whereClause, null, 2));
-    const questions = await Question.findAll({
-      where: whereClause,
-      include: [
-        { model: Option, as: "options" },
-        { model: Category, as: "category" }
-      ],
-      order: [["question_id", "DESC"]]
-      // Most recent first
-    });
-    console.log(`Found ${questions.length} questions`);
-    return questions.map((q) => q.get({ plain: true }));
   },
-  // Get questions by category
   getByCategory: async (categoryId) => {
     const questions = await Question.findAll({
       where: { category_id: categoryId },

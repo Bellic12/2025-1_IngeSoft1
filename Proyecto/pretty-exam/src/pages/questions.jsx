@@ -14,6 +14,7 @@ const Questions = () => {
 
   const fetchQuestions = async (filters = {}) => {
     setLoading(true)
+    setError(null)
     try {
       let questions
       // If no filters, get all questions
@@ -21,6 +22,7 @@ const Questions = () => {
         questions = await window.questionAPI.getAll()
       } else {
         // Use search API with filters
+        console.log('Searching with filters:', filters)
         questions = await window.questionAPI.search({
           searchTerm: filters.searchTerm,
           categoryIds: filters.categoryIds,
@@ -28,7 +30,10 @@ const Questions = () => {
       }
       setQuestions(questions)
     } catch (err) {
-      setError(err.message)
+      console.error('Error fetching questions:', err)
+      setError(`Error al buscar preguntas: ${err.message}`)
+      // Don't break the UI, show empty results instead
+      setQuestions([])
     }
     setLoading(false)
   }

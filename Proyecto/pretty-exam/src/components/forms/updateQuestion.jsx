@@ -133,24 +133,45 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
         options: options.map(opt => ({
           text: opt.text,
           is_correct: opt.isCorrect,
-          option_id: opt.option_id || undefined,
         })),
       })
+      
       questionObj.validate()
       setLoading(true)
-      await window.questionAPI.update(question.question_id, {
-        ...questionObj.toAPIFormat(),
+      
+      // Send clean data without option_id to avoid foreign key issues
+      const updateData = {
+        text,
+        type,
+        category_id: categoryId,
         options: options.map(opt => ({
           text: opt.text,
           is_correct: opt.isCorrect,
-          option_id: opt.option_id || undefined,
         })),
-      })
+      }
+      
+      await window.questionAPI.update(question.question_id, updateData)
       toast.success('Pregunta actualizada correctamente')
       fetchQuestions()
       document.getElementById('modal_update_question' + question.question_id).close()
+      setLoading(false)
     } catch (error) {
-      setFormError(error.message)
+      console.error('Error updating question:', error)
+      
+      // Handle specific error types with user-friendly messages
+      let userMessage = 'Error al actualizar la pregunta'
+      
+      if (error.message === 'CATEGORY_NOT_FOUND') {
+        userMessage = 'La categoría seleccionada no existe. Por favor, selecciona otra categoría.'
+      } else if (error.message === 'QUESTION_NOT_FOUND') {
+        userMessage = 'La pregunta no fue encontrada. Por favor, recarga la página.'
+      } else if (error.message === 'UPDATE_FAILED') {
+        userMessage = 'No se pudo actualizar la pregunta. Inténtalo de nuevo.'
+      }
+      
+      // Don't show technical errors in the form, only in console
+      setFormError('')
+      toast.error(userMessage)
       setLoading(false)
     }
   }
@@ -167,7 +188,6 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
     setOptions(originalState.current.options)
     setCategoryId(originalState.current.categoryId)
     setLoading(false)
-    setFormError('')
   }
 
   const handleOpenModal = async () => {
@@ -359,7 +379,6 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
               </button>
             )}
           </div>
-          {formError && <div className="text-error text-sm mb-2">{formError}</div>}
           <button className="btn btn-secondary btn-outline" type="submit" disabled={loading}>
             <span className={loading ? 'loading' : ''}>{loading ? '' : 'Actualizar pregunta'}</span>
           </button>
