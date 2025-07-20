@@ -28,13 +28,12 @@ const CreateExam = ({ fetchExams }) => {
     setLoading(true)
 
     try {
-      const createdExam = await window.examAPI.create({
+      await window.examAPI.create({
         name: name.trim(),
         description: description.trim(),
         duration_minutes: durationMinutes.trim(),
       })
 
-      console.log('Examen creado:', createdExam)
       resetForm()
       document.getElementById('modal_create_exam').close()
       toast.success('Examen creado exitosamente')

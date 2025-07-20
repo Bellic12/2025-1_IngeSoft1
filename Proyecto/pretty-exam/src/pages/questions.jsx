@@ -22,7 +22,6 @@ const Questions = () => {
         questions = await window.questionAPI.getAll()
       } else {
         // Use search API with filters
-        console.log('Searching with filters:', filters)
         questions = await window.questionAPI.search({
           searchTerm: filters.searchTerm,
           categoryIds: filters.categoryIds,

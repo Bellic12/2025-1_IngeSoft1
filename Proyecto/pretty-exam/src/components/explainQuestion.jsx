@@ -7,7 +7,6 @@ const ExplainQuestion = ({ questionId, optionSelectedId }) => {
   const handleOpenCollapse = async () => {
     if (explanation !== '') return
     try {
-      console.log('Fetching explanation for question:', questionId, 'option:', optionSelectedId)
       const response = await window.aiAPI.explainQuestion(questionId, optionSelectedId)
       setExplanation(response)
     } catch (error) {
