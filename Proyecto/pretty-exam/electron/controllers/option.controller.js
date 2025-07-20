@@ -4,6 +4,9 @@ const OptionController = {
   getAll: async () => {
     return await Option.findAll()
   },
+  getById: async id => {
+    return await Option.findOne({ where: { option_id: id } })
+  },
   create: async data => {
     return await Option.create(data)
   },

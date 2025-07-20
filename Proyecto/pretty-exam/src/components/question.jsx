@@ -12,11 +12,6 @@ const getTypeBadge = type => {
 }
 
 const QuestionCard = ({ question, fetchQuestions }) => {
-  console.log('Datos de la pregunta recibidos:', question)
-  if (question.options) {
-    console.log('Opciones de la pregunta:', question.options)
-  }
-
   return (
     <div className="card bg-base-300 shadow-lg hover:shadow-xl transition-shadow">
       <div className="card-body">
@@ -27,7 +22,11 @@ const QuestionCard = ({ question, fetchQuestions }) => {
               <div className={`badge ${getTypeBadge(question.type)}`}>
                 {question.type === 'multiple_choice' ? 'Selección múltiple' : 'Verdadero/Falso'}
               </div>
-              <div className="badge badge-outline">{question.category.name}</div>
+              <div className="badge badge-outline">
+                {typeof question.category === 'object'
+                  ? question.category?.name || 'General'
+                  : question.category || 'General'}
+              </div>
             </div>
           </div>
           <div className="flex gap-2">

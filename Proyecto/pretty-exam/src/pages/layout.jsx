@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { BookOpen, HelpCircle, Menu, X } from 'lucide-react'
 import { useState } from 'react'
+import { ExamSimProvider } from '../components/examSimContext'
 
 const Layout = () => {
   const location = useLocation()
@@ -8,7 +9,7 @@ const Layout = () => {
 
   return (
     <>
-      <div className="grid grid-cols-12">
+      <div className="flex min-h-screen w-full">
         {/* Mobile menu button */}
         <div className="lg:hidden fixed top-4 left-4 z-50">
           <button
@@ -22,20 +23,19 @@ const Layout = () => {
         {/* Sidebar */}
         <aside
           className={`
-          col-span-12 lg:col-span-2 min-h-screen bg-base-300 
-          fixed lg:static inset-y-0 left-0 z-40 lg:w-auto
-          transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-          lg:translate-x-0 transition-transform duration-300 ease-in-out
-        `}
+            bg-base-300 w-full lg:w-64 flex-shrink-0 z-40
+            lg:sticky lg:top-0 lg:h-screen
+            transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+            lg:translate-x-0 transition-transform duration-300 ease-in-out
+          `}
         >
           <div className="p-6 pt-16 lg:pt-6">
             <h1 className="text-xl font-bold mb-8">Pretty Exam</h1>
-
             <ul className="menu space-y-2 w-full">
               <li>
                 <Link
                   to="/"
-                  className={`w-full btn btn-outline btn-primary justify-center ${location.pathname === '/' ? 'active' : ''}`}
+                  className={`w-full btn btn-outline btn-primary justify-center ${location.pathname === '/' || location.pathname.startsWith('/exam') ? 'active' : ''}`}
                   onClick={() => setSidebarOpen(false)}
                 >
                   <BookOpen className="w-5 h-5 mr-2" />
@@ -65,8 +65,10 @@ const Layout = () => {
         )}
 
         {/* Main content */}
-        <div className="col-span-12 lg:col-span-10 p-6 pt-16 lg:pt-6">
-          <Outlet />
+        <div className="flex-1 p-6 pt-16 lg:pt-6">
+          <ExamSimProvider>
+            <Outlet />
+          </ExamSimProvider>
         </div>
       </div>
     </>

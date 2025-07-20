@@ -1,6 +1,6 @@
 import { ipcMain, app, BrowserWindow } from "electron";
 import { fileURLToPath } from "node:url";
-import { Sequelize, DataTypes } from "sequelize";
+import { Sequelize, DataTypes, Op } from "sequelize";
 import path, { join } from "path";
 import path$1 from "node:path";
 const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
@@ -60,6 +60,31 @@ Option.associate = () => {
     as: "question"
   });
 };
+const Exam = sequelize.define(
+  "Exam",
+  {
+    exam_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    name: { type: DataTypes.TEXT, allowNull: false },
+    description: { type: DataTypes.TEXT, allowNull: true },
+    duration_minutes: { type: DataTypes.INTEGER, allowNull: true, validate: { isInt: true } },
+    created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, allowNull: false },
+    updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, allowNull: false }
+  },
+  {
+    tableName: "Exam",
+    timestamps: false
+  }
+);
+Exam.associate = () => {
+  Exam.belongsToMany(Question, {
+    through: "ExamQuestion",
+    foreignKey: "exam_id",
+    otherKey: "question_id",
+    timestamps: false,
+    as: "questions",
+    onDelete: "CASCADE"
+  });
+};
 const Question = sequelize.define(
   "Question",
   {
@@ -68,16 +93,8 @@ const Question = sequelize.define(
     type: { type: DataTypes.STRING, allowNull: false },
     category_id: DataTypes.INTEGER,
     source: { type: DataTypes.STRING, defaultValue: "manual", allowNull: true },
-    created_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-      allowNull: false
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-      allowNull: false
-    }
+    created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, allowNull: false },
+    updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, allowNull: false }
   },
   {
     tableName: "Question",
@@ -94,12 +111,68 @@ Question.associate = () => {
     foreignKey: "category_id",
     as: "category"
   });
+  Question.belongsToMany(Exam, {
+    through: "ExamQuestion",
+    foreignKey: "question_id",
+    otherKey: "exam_id",
+    timestamps: false,
+    as: "exams",
+    onDelete: "CASCADE"
+  });
+};
+const UserAnswer = sequelize.define(
+  "UserAnswer",
+  {
+    result_id: { type: DataTypes.INTEGER, primaryKey: true, allowNull: false },
+    question_id: { type: DataTypes.INTEGER, primaryKey: true, allowNull: false },
+    option_id: { type: DataTypes.INTEGER, allowNull: false },
+    is_correct: { type: DataTypes.BOOLEAN, allowNull: false }
+  },
+  {
+    tableName: "UserAnswer",
+    timestamps: false
+  }
+);
+UserAnswer.associate = () => {
+  UserAnswer.belongsTo(Result, { foreignKey: "result_id", as: "result", onDelete: "CASCADE" });
+  UserAnswer.belongsTo(Question, { foreignKey: "question_id", as: "question", onDelete: "CASCADE" });
+  UserAnswer.belongsTo(Option, { foreignKey: "option_id", as: "option", onDelete: "CASCADE" });
+};
+const Result = sequelize.define(
+  "Result",
+  {
+    result_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    exam_id: { type: DataTypes.INTEGER, allowNull: false },
+    score: { type: DataTypes.INTEGER, allowNull: false, validate: { min: 0, max: 100 } },
+    correct_answers: { type: DataTypes.INTEGER, allowNull: false },
+    incorrect_answers: { type: DataTypes.INTEGER, allowNull: false },
+    time_used: { type: DataTypes.INTEGER, allowNull: false },
+    taken_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, allowNull: false }
+  },
+  {
+    tableName: "Result",
+    timestamps: false
+  }
+);
+Result.associate = () => {
+  Result.belongsTo(Exam, {
+    foreignKey: "exam_id",
+    as: "exam",
+    onDelete: "CASCADE"
+  });
+  Result.hasMany(UserAnswer, {
+    foreignKey: "result_id",
+    as: "userAnswers",
+    onDelete: "CASCADE"
+  });
 };
 Question.associate && Question.associate();
 Option.associate && Option.associate();
 Category.associate && Category.associate();
+Exam.associate && Exam.associate();
+Result.associate && Result.associate();
+UserAnswer.associate && UserAnswer.associate();
 const QuestionController = {
-  // Get questions with options and category
   getAll: async () => {
     const questions = await Question.findAll({
       include: [
@@ -109,7 +182,19 @@ const QuestionController = {
     });
     return questions.map((q) => q.get({ plain: true }));
   },
-  // Create a new question with options
+  getById: async (id) => {
+    const question = await Question.findOne({
+      where: { question_id: id },
+      include: [
+        { model: Option, as: "options" },
+        { model: Category, as: "category" }
+      ]
+    });
+    if (!question) {
+      throw new Error(`Question with ID ${id} not found`);
+    }
+    return question.get({ plain: true });
+  },
   create: async (data) => {
     const t = await sequelize.transaction();
     try {
@@ -138,10 +223,52 @@ const QuestionController = {
       throw err;
     }
   },
-  // Update an existing question and its options
   update: async (id, data) => {
+    var _a;
     const t = await sequelize.transaction();
     try {
+      if (data.category_id) {
+        const categoryExists = await Category.findByPk(data.category_id, { transaction: t });
+        if (!categoryExists) {
+          await t.rollback();
+          console.error(`Category with ID ${data.category_id} does not exist`);
+          throw new Error("CATEGORY_NOT_FOUND");
+        }
+      }
+      const existingQuestion = await Question.findByPk(id, { transaction: t });
+      if (!existingQuestion) {
+        await t.rollback();
+        console.error(`Question with ID ${id} does not exist`);
+        throw new Error("QUESTION_NOT_FOUND");
+      }
+      await sequelize.query("PRAGMA foreign_keys = OFF", {
+        transaction: t,
+        type: sequelize.QueryTypes.RAW
+      });
+      const existingOptions = await sequelize.query(
+        "SELECT option_id FROM `Option` WHERE `question_id` = ?",
+        {
+          replacements: [id],
+          transaction: t,
+          type: sequelize.QueryTypes.SELECT
+        }
+      );
+      if (existingOptions.length > 0) {
+        const optionIds = existingOptions.map((opt) => opt.option_id);
+        await sequelize.query(
+          `DELETE FROM \`UserAnswer\` WHERE \`option_id\` IN (${optionIds.map(() => "?").join(",")})`,
+          {
+            replacements: optionIds,
+            transaction: t,
+            type: sequelize.QueryTypes.DELETE
+          }
+        );
+      }
+      await sequelize.query("DELETE FROM `Option` WHERE `question_id` = ?", {
+        replacements: [id],
+        transaction: t,
+        type: sequelize.QueryTypes.DELETE
+      });
       await Question.update(
         {
           text: data.text,
@@ -150,20 +277,8 @@ const QuestionController = {
         },
         { where: { question_id: id }, transaction: t }
       );
-      const currentOptions = await Option.findAll({
-        where: { question_id: id },
-        transaction: t
-      });
-      for (const opt of data.options) {
-        if (opt.option_id) {
-          await Option.update(
-            {
-              text: opt.text,
-              is_correct: opt.is_correct
-            },
-            { where: { option_id: opt.option_id }, transaction: t }
-          );
-        } else {
+      if (data.options && data.options.length > 0) {
+        for (const opt of data.options) {
           await Option.create(
             {
               text: opt.text,
@@ -174,21 +289,151 @@ const QuestionController = {
           );
         }
       }
-      const receivedIds = data.options.filter((o) => o.option_id).map((o) => o.option_id);
-      for (const opt of currentOptions) {
-        if (!receivedIds.includes(opt.option_id)) {
-          await Option.destroy({ where: { option_id: opt.option_id }, transaction: t });
-        }
-      }
+      await sequelize.query("PRAGMA foreign_keys = ON", {
+        transaction: t,
+        type: sequelize.QueryTypes.RAW
+      });
       await t.commit();
+      console.log(`Question ${id} updated successfully`);
       return true;
     } catch (err) {
       await t.rollback();
-      throw err;
+      console.error("Error updating question:", err);
+      if (err.name === "SequelizeForeignKeyConstraintError") {
+        console.error("Foreign key constraint error details:", {
+          sql: err.sql,
+          original: (_a = err.original) == null ? void 0 : _a.message,
+          table: err.table,
+          fields: err.fields
+        });
+      }
+      if (err.message === "CATEGORY_NOT_FOUND") {
+        throw new Error("CATEGORY_NOT_FOUND");
+      }
+      if (err.message === "QUESTION_NOT_FOUND") {
+        throw new Error("QUESTION_NOT_FOUND");
+      }
+      throw new Error("UPDATE_FAILED");
     }
   },
   delete: async (id) => {
     return await Question.destroy({ where: { question_id: id } });
+  },
+  search: async (filters = {}) => {
+    console.log("QuestionController.search called with filters:", filters);
+    const { searchTerm, categoryIds } = filters;
+    const normalizeSearchTerm = (text) => {
+      if (!text || typeof text !== "string") {
+        return "";
+      }
+      return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    };
+    try {
+      let whereClause = {};
+      if (categoryIds && categoryIds.length > 0) {
+        whereClause.category_id = {
+          [Op.in]: categoryIds
+        };
+      }
+      if (searchTerm && searchTerm.trim()) {
+        const normalizedSearchTerm = normalizeSearchTerm(searchTerm);
+        const searchConditions = [];
+        searchConditions.push({
+          text: sequelize.where(
+            sequelize.fn(
+              "LOWER",
+              sequelize.fn(
+                "REPLACE",
+                sequelize.fn(
+                  "REPLACE",
+                  sequelize.fn(
+                    "REPLACE",
+                    sequelize.fn(
+                      "REPLACE",
+                      sequelize.fn("REPLACE", sequelize.col("Question.text"), "á", "a"),
+                      "é",
+                      "e"
+                    ),
+                    "í",
+                    "i"
+                  ),
+                  "ó",
+                  "o"
+                ),
+                "ú",
+                "u"
+              )
+            ),
+            "LIKE",
+            `%${normalizedSearchTerm}%`
+          )
+        });
+        if (!categoryIds || categoryIds.length === 0) {
+          searchConditions.push(
+            sequelize.where(
+              sequelize.fn(
+                "LOWER",
+                sequelize.fn(
+                  "REPLACE",
+                  sequelize.fn(
+                    "REPLACE",
+                    sequelize.fn(
+                      "REPLACE",
+                      sequelize.fn(
+                        "REPLACE",
+                        sequelize.fn("REPLACE", sequelize.col("category.name"), "á", "a"),
+                        "é",
+                        "e"
+                      ),
+                      "í",
+                      "i"
+                    ),
+                    "ó",
+                    "o"
+                  ),
+                  "ú",
+                  "u"
+                )
+              ),
+              "LIKE",
+              `%${normalizedSearchTerm}%`
+            )
+          );
+        }
+        const searchClause = { [Op.or]: searchConditions };
+        if (Object.keys(whereClause).length > 0) {
+          whereClause = {
+            [Op.and]: [whereClause, searchClause]
+          };
+        } else {
+          whereClause = searchClause;
+        }
+      }
+      const questions = await Question.findAll({
+        where: whereClause,
+        include: [
+          { model: Option, as: "options" },
+          { model: Category, as: "category" }
+        ],
+        order: [["question_id", "DESC"]]
+      });
+      console.log(`Found ${questions.length} questions matching search criteria`);
+      return questions.map((q) => q.get({ plain: true }));
+    } catch (error) {
+      console.error("Error in question search:", error);
+      return [];
+    }
+  },
+  getByCategory: async (categoryId) => {
+    const questions = await Question.findAll({
+      where: { category_id: categoryId },
+      include: [
+        { model: Option, as: "options" },
+        { model: Category, as: "category" }
+      ],
+      order: [["question_id", "DESC"]]
+    });
+    return questions.map((q) => q.get({ plain: true }));
   }
 };
 ipcMain.handle("questions:getAll", async () => {
@@ -203,9 +448,18 @@ ipcMain.handle("questions:update", async (_, id, data) => {
 ipcMain.handle("questions:delete", async (_, id) => {
   return await QuestionController.delete(id);
 });
+ipcMain.handle("questions:search", async (_, filters) => {
+  return await QuestionController.search(filters);
+});
+ipcMain.handle("questions:getByCategory", async (_, categoryId) => {
+  return await QuestionController.getByCategory(categoryId);
+});
 const OptionController = {
   getAll: async () => {
     return await Option.findAll();
+  },
+  getById: async (id) => {
+    return await Option.findOne({ where: { option_id: id } });
   },
   create: async (data) => {
     return await Option.create(data);
@@ -228,6 +482,355 @@ ipcMain.handle("options:update", async (_, id, data) => {
 });
 ipcMain.handle("options:delete", async (_, id) => {
   return await OptionController.delete(id);
+});
+const CategoryController = {
+  // Get all categories
+  getAll: async () => {
+    const categories = await Category.findAll({
+      order: [["name", "ASC"]]
+    });
+    return categories.map((c) => c.get({ plain: true }));
+  },
+  // Create a new category
+  create: async (data) => {
+    try {
+      const category = await Category.create({
+        name: data.name
+      });
+      return category.get({ plain: true });
+    } catch (error) {
+      if (error.name === "SequelizeUniqueConstraintError") {
+        throw new Error("Category name already exists");
+      }
+      throw error;
+    }
+  },
+  // Update an existing category
+  update: async (id, data) => {
+    try {
+      const [updatedRowsCount] = await Category.update(
+        { name: data.name },
+        { where: { category_id: id } }
+      );
+      if (updatedRowsCount === 0) {
+        throw new Error("Category not found");
+      }
+      const updatedCategory = await Category.findByPk(id);
+      return updatedCategory.get({ plain: true });
+    } catch (error) {
+      if (error.name === "SequelizeUniqueConstraintError") {
+        throw new Error("Category name already exists");
+      }
+      throw error;
+    }
+  },
+  // Delete a category
+  delete: async (id) => {
+    const deletedRowsCount = await Category.destroy({
+      where: { category_id: id }
+    });
+    if (deletedRowsCount === 0) {
+      throw new Error("Category not found");
+    }
+    return true;
+  },
+  // Check if category name exists
+  nameExists: async (name, excludeId = null) => {
+    const whereClause = { name };
+    if (excludeId) {
+      whereClause.category_id = { [Category.sequelize.Op.ne]: excludeId };
+    }
+    const category = await Category.findOne({ where: whereClause });
+    return !!category;
+  }
+};
+ipcMain.handle("categories:getAll", async () => {
+  return await CategoryController.getAll();
+});
+ipcMain.handle("categories:create", async (_, data) => {
+  return await CategoryController.create(data);
+});
+ipcMain.handle("categories:update", async (_, id, data) => {
+  return await CategoryController.update(id, data);
+});
+ipcMain.handle("categories:delete", async (_, id) => {
+  return await CategoryController.delete(id);
+});
+ipcMain.handle("categories:nameExists", async (_, name, excludeId = null) => {
+  return await CategoryController.nameExists(name, excludeId);
+});
+const ExamController = {
+  // Get all exams with associated questions
+  getAll: async () => {
+    const exams = await Exam.findAll({
+      include: [{ model: Question, as: "questions" }]
+    });
+    return exams.map((e) => e.get({ plain: true }));
+  },
+  // Get an exam by ID with associated questions and their options
+  getById: async (id) => {
+    const exam = await Exam.findByPk(id, {
+      include: [
+        {
+          model: Question,
+          as: "questions",
+          include: [{ model: Option, as: "options" }]
+        }
+      ]
+    });
+    return exam ? exam.get({ plain: true }) : null;
+  },
+  // Create a new exam with associated questions
+  create: async (data) => {
+    const t = await sequelize.transaction();
+    try {
+      const exam = await Exam.create(
+        {
+          name: data.name,
+          description: data.description,
+          duration_minutes: data.duration_minutes
+        },
+        { transaction: t }
+      );
+      if (data.question_ids && data.question_ids.length > 0) {
+        await exam.setQuestions(data.question_ids, { transaction: t });
+      }
+      await t.commit();
+      return exam;
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+  },
+  // Update an existing exam and its associated questions
+  update: async (id, data) => {
+    const t = await sequelize.transaction();
+    try {
+      await Exam.update(
+        {
+          name: data.name,
+          description: data.description,
+          duration_minutes: data.duration_minutes
+        },
+        { where: { exam_id: id }, transaction: t }
+      );
+      if (data.question_ids && data.question_ids.length > 0) {
+        const exam = await Exam.findByPk(id, { transaction: t });
+        await exam.setQuestions(data.question_ids, { transaction: t });
+      }
+      await t.commit();
+      return { message: "Exam updated successfully" };
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+  },
+  // Delete an exam by ID
+  delete: async (id) => {
+    const t = await sequelize.transaction();
+    try {
+      const result = await Exam.destroy({
+        where: { exam_id: id },
+        transaction: t
+      });
+      await t.commit();
+      return result > 0 ? { message: "Exam deleted successfully" } : null;
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+  },
+  // Get questions associated with an exam
+  getQuestions: async (examId) => {
+    const exam = await Exam.findByPk(examId, {
+      include: [
+        {
+          model: Question,
+          as: "questions",
+          include: [
+            { model: Category, as: "category" },
+            { model: Option, as: "options" }
+          ]
+        }
+      ]
+    });
+    return exam ? exam.questions.map((q) => q.get({ plain: true })) : [];
+  },
+  // Add questions to an exam
+  addQuestions: async (examId, questionIds) => {
+    const t = await sequelize.transaction();
+    try {
+      const exam = await Exam.findByPk(examId, { transaction: t });
+      if (!exam) throw new Error("Exam not found");
+      const questions = await Question.findAll({
+        where: { question_id: questionIds },
+        transaction: t
+      });
+      await exam.addQuestions(questions, { transaction: t });
+      await t.commit();
+      return { message: "Questions added successfully" };
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+  },
+  // Remove questions from an exam
+  removeQuestions: async (examId, questionIds) => {
+    const t = await sequelize.transaction();
+    try {
+      const exam = await Exam.findByPk(examId, { transaction: t });
+      if (!exam) throw new Error("Exam not found");
+      const questions = await Question.findAll({
+        where: { question_id: questionIds },
+        transaction: t
+      });
+      await exam.removeQuestions(questions, { transaction: t });
+      await t.commit();
+      return { message: "Questions removed successfully" };
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+  }
+};
+const ResultController = {
+  getAll: async () => {
+    const results = await Result.findAll({
+      include: [
+        { model: Exam, as: "exam" },
+        { model: UserAnswer, as: "userAnswers", include: [{ model: Option, as: "option" }] }
+      ]
+    });
+    return results.map((e) => e.get({ plain: true }));
+  },
+  getByExamId: async (examId) => {
+    const results = await Result.findAll({
+      where: { exam_id: examId },
+      order: [["taken_at", "DESC"]]
+    });
+    return results.map((e) => e.get({ plain: true }));
+  },
+  getById: async (id) => {
+    const result = await Result.findByPk(id, {
+      include: [
+        { model: Exam, as: "exam" },
+        { model: UserAnswer, as: "userAnswers", include: [{ model: Option, as: "option" }] }
+      ]
+    });
+    return result ? result.get({ plain: true }) : null;
+  },
+  create: async (data) => {
+    const result = await Result.create({
+      exam_id: data.exam_id,
+      score: data.score,
+      correct_answers: data.correct_answers,
+      incorrect_answers: data.incorrect_answers,
+      time_used: data.time_used,
+      taken_at: /* @__PURE__ */ new Date()
+    });
+    return result.get({ plain: true });
+  },
+  delete: async (id) => {
+    return await Result.destroy({ where: { result_id: id } });
+  }
+};
+{
+  console.log("Gemini API key is not set.");
+}
+const AIController = {
+  explainQuestion: async (questionId, optionSelectedId) => {
+    {
+      throw new Error("Gemini API key is not set.");
+    }
+  },
+  // Método para retroalimentación del examen
+  feedbackExam: async (examId, resultId) => {
+    {
+      throw new Error("Gemini API key is not set.");
+    }
+  }
+};
+ipcMain.handle("ai:explainQuestion", async (_, questionId, optionSelectedId) => {
+  return await AIController.explainQuestion(questionId, optionSelectedId);
+});
+ipcMain.handle("ai:feedbackExam", async (_, examId, resultId) => {
+  return await AIController.feedbackExam(examId, resultId);
+});
+ipcMain.handle("exams:getAll", async () => {
+  return await ExamController.getAll();
+});
+ipcMain.handle("exams:getById", async (_, id) => {
+  return await ExamController.getById(id);
+});
+ipcMain.handle("exams:create", async (_, data) => {
+  return await ExamController.create(data);
+});
+ipcMain.handle("exams:update", async (_, id, data) => {
+  return await ExamController.update(id, data);
+});
+ipcMain.handle("exams:delete", async (_, id) => {
+  return await ExamController.delete(id);
+});
+ipcMain.handle("exams:getQuestions", async (_, examId) => {
+  return await ExamController.getQuestions(examId);
+});
+ipcMain.handle("exams:addQuestions", async (_, examId, questionIds) => {
+  return await ExamController.addQuestions(examId, questionIds);
+});
+ipcMain.handle("exams:removeQuestions", async (_, examId, questionIds) => {
+  return await ExamController.removeQuestions(examId, questionIds);
+});
+ipcMain.handle("results:getAll", async () => {
+  return await ResultController.getAll();
+});
+ipcMain.handle("results:getById", async (event, id) => {
+  return await ResultController.getById(id);
+});
+ipcMain.handle("results:create", async (event, data) => {
+  return await ResultController.create(data);
+});
+ipcMain.handle("results:delete", async (event, id) => {
+  return await ResultController.delete(id);
+});
+ipcMain.handle("results:getByExamId", async (event, examId) => {
+  return await ResultController.getByExamId(examId);
+});
+const UserAnswerController = {
+  getAll: async () => {
+    return await UserAnswer.findAll({ include: ["result", "question", "option"] });
+  },
+  getById: async (resultId, questionId) => {
+    return await UserAnswer.findOne({
+      where: { result_id: resultId, question_id: questionId },
+      include: ["result", "question", "option"]
+    });
+  },
+  create: async (data) => {
+    const option = await Option.findByPk(data.optionId);
+    if (!option) throw new Error("Option not found");
+    const isCorrect = !!option.is_correct;
+    return await UserAnswer.create({
+      result_id: data.resultId,
+      question_id: data.questionId,
+      option_id: data.optionId,
+      is_correct: isCorrect
+    });
+  },
+  delete: async (resultId, questionId) => {
+    return await UserAnswer.destroy({ where: { result_id: resultId, question_id: questionId } });
+  }
+};
+ipcMain.handle("userAnswers:getAll", async () => {
+  return await UserAnswerController.getAll();
+});
+ipcMain.handle("userAnswers:getById", async (event, resultId, questionId) => {
+  return await UserAnswerController.getById(resultId, questionId);
+});
+ipcMain.handle("userAnswers:create", async (event, data) => {
+  return await UserAnswerController.create(data);
+});
+ipcMain.handle("userAnswers:delete", async (event, resultId, questionId) => {
+  return await UserAnswerController.delete(resultId, questionId);
 });
 const __dirname = path$1.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path$1.join(__dirname, "..");

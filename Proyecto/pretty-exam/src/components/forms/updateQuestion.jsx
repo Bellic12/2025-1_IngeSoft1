@@ -1,7 +1,8 @@
-import { Pencil } from 'lucide-react'
+import { Pencil, Tag, Edit2 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
 import QuestionFactory from '../../factories/QuestionFactory'
+import CategoryFilter from '../CategoryFilter'
 
 const getInitialOptions = (type, optionsFromQuestion) => {
   if (optionsFromQuestion && optionsFromQuestion.length > 0) {
@@ -23,10 +24,13 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
   const [text, setText] = useState('')
   const [type, setType] = useState('multiple_choice')
   const [options, setOptions] = useState([])
-  // eslint-disable-next-line no-unused-vars
-  const [categoryId, setCategoryId] = useState(1)
+  const [categoryId, setCategoryId] = useState(null)
+  const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(false)
-  const [formError, setFormError] = useState('')
+  const [, setFormError] = useState('')
+  const [showCategorySelector, setShowCategorySelector] = useState(false)
+  const [editingCategoryId, setEditingCategoryId] = useState(null)
+  const [modalWasOpen, setModalWasOpen] = useState(false)
 
   const originalState = useRef({})
 
@@ -34,14 +38,30 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
     if (question) {
       setText(question.text || '')
       setType(question.type || 'multiple_choice')
+      setCategoryId(question.category_id || null)
       setOptions(getInitialOptions(question.type, question.options))
       originalState.current = {
         text: question.text || '',
         type: question.type || 'multiple_choice',
+        categoryId: question.category_id || null,
         options: getInitialOptions(question.type, question.options),
       }
     }
   }, [question])
+
+  // Fetch categories
+  const fetchCategories = async () => {
+    try {
+      const result = await window.categoryAPI.getAll()
+      setCategories(result)
+    } catch (err) {
+      console.error('Error fetching categories:', err)
+    }
+  }
+
+  useEffect(() => {
+    fetchCategories()
+  }, [])
 
   useEffect(() => {
     if (!question) return
@@ -104,6 +124,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
   const handleSubmit = async event => {
     event.preventDefault()
     setFormError('')
+
     try {
       const questionObj = QuestionFactory.createQuestion(type, {
         text,
@@ -111,38 +132,66 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
         options: options.map(opt => ({
           text: opt.text,
           is_correct: opt.isCorrect,
-          option_id: opt.option_id || undefined,
         })),
       })
+
       questionObj.validate()
       setLoading(true)
-      await window.questionAPI.update(question.question_id, {
-        ...questionObj.toAPIFormat(),
+
+      // Send clean data without option_id to avoid foreign key issues
+      const updateData = {
+        text,
+        type,
+        category_id: categoryId,
         options: options.map(opt => ({
           text: opt.text,
           is_correct: opt.isCorrect,
-          option_id: opt.option_id || undefined,
         })),
-      })
+      }
+
+      await window.questionAPI.update(question.question_id, updateData)
       toast.success('Pregunta actualizada correctamente')
       fetchQuestions()
       document.getElementById('modal_update_question' + question.question_id).close()
+      setLoading(false)
     } catch (error) {
-      setFormError(error.message)
+      console.error('Error updating question:', error)
+
+      // Handle specific error types with user-friendly messages
+      let userMessage = 'Error al actualizar la pregunta'
+
+      if (error.message === 'CATEGORY_NOT_FOUND') {
+        userMessage = 'La categoría seleccionada no existe. Por favor, selecciona otra categoría.'
+      } else if (error.message === 'QUESTION_NOT_FOUND') {
+        userMessage = 'La pregunta no fue encontrada. Por favor, recarga la página.'
+      } else if (error.message === 'UPDATE_FAILED') {
+        userMessage = 'No se pudo actualizar la pregunta. Inténtalo de nuevo.'
+      }
+
+      // Don't show technical errors in the form, only in console
+      setFormError('')
+      toast.error(userMessage)
       setLoading(false)
     }
+  }
+
+  const getCurrentCategoryName = () => {
+    if (!categoryId) return 'Sin categoría'
+    const category = categories.find(c => c.category_id === categoryId)
+    return category?.name || 'Categoría seleccionada'
   }
 
   const resetForm = () => {
     setText(originalState.current.text)
     setType(originalState.current.type)
     setOptions(originalState.current.options)
+    setCategoryId(originalState.current.categoryId)
     setLoading(false)
-    setFormError('')
   }
 
-  const handleOpenModal = () => {
+  const handleOpenModal = async () => {
     resetForm()
+    await fetchCategories()
     document.getElementById('modal_update_question' + question.question_id).showModal()
   }
 
@@ -184,19 +233,70 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
               required
             />
           </div>
-          {/* Type */}
-          <div className="form-control flex flex-col gap-2">
-            <label className="label">
-              <span className="label-text">Tipo de pregunta</span>
-            </label>
-            <select
-              className="select select-bordered w-full"
-              value={type}
-              onChange={handleOnChangeType}
-            >
-              <option value="multiple_choice">Opción múltiple</option>
-              <option value="true_false">Verdadero/Falso</option>
-            </select>
+          {/* Type and Category row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Type */}
+            <div className="form-control flex flex-col gap-2">
+              <label className="label">
+                <span className="label-text">Tipo de pregunta</span>
+              </label>
+              <select
+                className="select select-bordered w-full"
+                value={type}
+                onChange={handleOnChangeType}
+              >
+                <option value="multiple_choice">Opción múltiple</option>
+                <option value="true_false">Verdadero/Falso</option>
+              </select>
+            </div>
+
+            {/* Category */}
+            <div className="form-control flex flex-col gap-2">
+              <label className="label">
+                <span className="label-text">Categoría</span>
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="btn btn-error text-white flex-1 justify-start"
+                  onClick={() => {
+                    setModalWasOpen(true)
+                    document.getElementById('modal_update_question' + question.question_id).close()
+                    setTimeout(() => setShowCategorySelector(true), 100)
+                  }}
+                >
+                  <Tag className="w-4 h-4" />
+                  {getCurrentCategoryName()}
+                </button>
+                {categoryId && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-square"
+                      onClick={() => {
+                        setEditingCategoryId(categoryId)
+                        setModalWasOpen(true)
+                        document
+                          .getElementById('modal_update_question' + question.question_id)
+                          .close()
+                        setTimeout(() => setShowCategorySelector(true), 100)
+                      }}
+                      title="Editar categoría"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-square"
+                      onClick={() => setCategoryId(null)}
+                      title="Limpiar categoría"
+                    >
+                      ✕
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
           {/* Options */}
           <div className="form-control flex flex-col gap-2">
@@ -280,12 +380,43 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
               </button>
             )}
           </div>
-          {formError && <div className="text-error text-sm mb-2">{formError}</div>}
           <button className="btn btn-secondary btn-outline" type="submit" disabled={loading}>
             <span className={loading ? 'loading' : ''}>{loading ? '' : 'Actualizar pregunta'}</span>
           </button>
         </form>
       </dialog>
+
+      {/* Category Selector Modal */}
+      <CategoryFilter
+        isOpen={showCategorySelector}
+        onClose={async () => {
+          setShowCategorySelector(false)
+          setEditingCategoryId(null)
+          await fetchCategories()
+          if (modalWasOpen) {
+            setModalWasOpen(false)
+            setTimeout(() => {
+              document.getElementById('modal_update_question' + question.question_id).showModal()
+            }, 100)
+          }
+        }}
+        selectedCategories={categoryId ? [categoryId] : []}
+        onCategorySelect={async categories => {
+          setCategoryId(categories[0] || null)
+          setShowCategorySelector(false)
+          setEditingCategoryId(null)
+          await fetchCategories()
+          if (modalWasOpen) {
+            setModalWasOpen(false)
+            setTimeout(() => {
+              document.getElementById('modal_update_question' + question.question_id).showModal()
+            }, 100)
+          }
+        }}
+        singleSelect={true}
+        title="Seleccionar Categoría"
+        editingCategoryId={editingCategoryId}
+      />
     </>
   )
 }
