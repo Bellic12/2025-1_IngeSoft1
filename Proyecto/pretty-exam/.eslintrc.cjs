@@ -8,7 +8,7 @@ module.exports = {
     'plugin:prettier/recommended'
   ],
   ignorePatterns: ['dist', '.eslintrc.cjs'],
-  plugins: ['react-refresh'],
+  plugins: ['react-refresh', 'jest'],
   rules: {
     'react-refresh/only-export-components': [
       'warn',
@@ -51,7 +51,6 @@ module.exports = {
         'jest/no-identical-title': 'error', // No permitir títulos de test idénticos
         'jest/prefer-strict-equal': 'warn', // Preferir toStrictEqual
         'jest/no-test-return-statement': 'error', // No return en tests
-        'jest/valid-expect': 'error', // Validar expect
       },
     },
   ],
