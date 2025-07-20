@@ -2,7 +2,15 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Edit2, Plus, Check, Trash2 } from 'lucide-react'
 
-const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect, singleSelect = false, title = "Filtrar por Categorías", editingCategoryId = null }) => {
+const CategoryFilter = ({
+  isOpen,
+  onClose,
+  selectedCategories,
+  onCategorySelect,
+  singleSelect = false,
+  title = 'Filtrar por Categorías',
+  editingCategoryId = null,
+}) => {
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -19,7 +27,7 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
     try {
       const result = await window.categoryAPI.getAll()
       setCategories(result)
-      
+
       if (editingCategoryId && result.length > 0) {
         const category = result.find(c => c.category_id === editingCategoryId)
         if (category) {
@@ -37,17 +45,17 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
   useEffect(() => {
     if (isOpen) {
       fetchCategories()
-      
+
       setTimeout(() => {
         const allDialogs = document.querySelectorAll('dialog.modal')
         const allModals = document.querySelectorAll('.modal')
-        
+
         allDialogs.forEach(dialog => {
           if (!dialog.hasAttribute('data-category-filter-modal')) {
             dialog.style.zIndex = '1000'
           }
         })
-        
+
         allModals.forEach(modal => {
           if (!modal.hasAttribute('data-category-filter-modal')) {
             modal.style.zIndex = '1000'
@@ -58,13 +66,13 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
       setTimeout(() => {
         const allDialogs = document.querySelectorAll('dialog.modal')
         const allModals = document.querySelectorAll('.modal')
-        
+
         allDialogs.forEach(dialog => {
           if (!dialog.hasAttribute('data-category-filter-modal')) {
             dialog.style.zIndex = ''
           }
         })
-        
+
         allModals.forEach(modal => {
           if (!modal.hasAttribute('data-category-filter-modal')) {
             modal.style.zIndex = ''
@@ -74,7 +82,7 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
     }
   }, [isOpen])
 
-  const handleCategoryToggle = (categoryId) => {
+  const handleCategoryToggle = categoryId => {
     if (singleSelect) {
       const newSelected = selectedCategories.includes(categoryId) ? [] : [categoryId]
       onCategorySelect(newSelected)
@@ -82,12 +90,12 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
       const newSelected = selectedCategories.includes(categoryId)
         ? selectedCategories.filter(id => id !== categoryId)
         : [...selectedCategories, categoryId]
-      
+
       onCategorySelect(newSelected)
     }
   }
 
-  const startEditing = (category) => {
+  const startEditing = category => {
     setEditingId(category.category_id)
     setEditingName(category.name)
     setError('')
@@ -135,7 +143,7 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
     }
   }
 
-  const checkCategoryQuestions = async (categoryId) => {
+  const checkCategoryQuestions = async categoryId => {
     try {
       const questions = await window.questionAPI.getByCategory(categoryId)
       return questions
@@ -145,7 +153,7 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
     }
   }
 
-  const initiateDeleteCategory = async (categoryId) => {
+  const initiateDeleteCategory = async categoryId => {
     setError('')
     const questions = await checkCategoryQuestions(categoryId)
     setDeletingCategory(categoryId)
@@ -165,14 +173,14 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
         for (const question of categoryQuestions) {
           await window.questionAPI.update(question.question_id, {
             ...question,
-            category_id: null
+            category_id: null,
           })
         }
       }
 
       await window.categoryAPI.delete(deletingCategory)
       await fetchCategories()
-      
+
       if (selectedCategories.includes(deletingCategory)) {
         onCategorySelect(selectedCategories.filter(id => id !== deletingCategory))
       }
@@ -195,7 +203,7 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
   if (!isOpen) return null
 
   const modalElement = (
-    <div 
+    <div
       className="modal modal-open"
       data-category-filter-modal="true"
       style={{
@@ -204,23 +212,20 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
         top: 0,
         left: 0,
         width: '100vw',
-        height: '100vh'
+        height: '100vh',
       }}
     >
-      <div 
+      <div
         className="modal-box w-full max-w-md max-h-[80vh] flex flex-col"
         style={{
           zIndex: 1000000,
-          position: 'relative'
+          position: 'relative',
         }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-base-200">
           <h2 className="text-lg font-semibold">{title}</h2>
-          <button
-            onClick={onClose}
-            className="btn btn-ghost btn-sm btn-square"
-          >
+          <button onClick={onClose} className="btn btn-ghost btn-sm btn-square">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -241,26 +246,29 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
           ) : (
             <div className="space-y-2">
               {/* Categories list */}
-              {categories.map((category) => (
-                <div key={category.category_id} className="flex items-center gap-2 p-2 hover:bg-base-200 rounded">
+              {categories.map(category => (
+                <div
+                  key={category.category_id}
+                  className="flex items-center gap-2 p-2 hover:bg-base-200 rounded"
+                >
                   {/* Checkbox or Radio */}
                   <input
-                    type={singleSelect ? "radio" : "checkbox"}
-                    name={singleSelect ? "category-select" : undefined}
-                    className={singleSelect ? "radio radio-primary" : "checkbox checkbox-primary"}
+                    type={singleSelect ? 'radio' : 'checkbox'}
+                    name={singleSelect ? 'category-select' : undefined}
+                    className={singleSelect ? 'radio radio-primary' : 'checkbox checkbox-primary'}
                     checked={selectedCategories.includes(category.category_id)}
                     onChange={() => handleCategoryToggle(category.category_id)}
                   />
-                  
+
                   {/* Category name */}
                   {editingId === category.category_id ? (
                     <div className="flex-1 flex items-center gap-2">
                       <input
                         type="text"
                         value={editingName}
-                        onChange={(e) => setEditingName(e.target.value)}
+                        onChange={e => setEditingName(e.target.value)}
                         className="input input-sm input-bordered flex-1"
-                        onKeyDown={(e) => {
+                        onKeyDown={e => {
                           if (e.key === 'Enter') saveEdit()
                           if (e.key === 'Escape') cancelEdit()
                         }}
@@ -272,10 +280,7 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
                       >
                         <Check className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={cancelEdit}
-                        className="btn btn-ghost btn-sm btn-square"
-                      >
+                      <button onClick={cancelEdit} className="btn btn-ghost btn-sm btn-square">
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -308,10 +313,10 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
                   <input
                     type="text"
                     value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    onChange={e => setNewCategoryName(e.target.value)}
                     placeholder="Nombre de la nueva categoría"
                     className="input input-sm input-bordered flex-1"
-                    onKeyDown={(e) => {
+                    onKeyDown={e => {
                       if (e.key === 'Enter') createCategory()
                       if (e.key === 'Escape') {
                         setIsCreating(false)
@@ -354,26 +359,19 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
         {/* Footer */}
         <div className="p-4 border-t border-base-200 flex justify-between items-center">
           <div className="text-sm text-base-content/70">
-            {singleSelect 
-              ? selectedCategories.length > 0 
+            {singleSelect
+              ? selectedCategories.length > 0
                 ? `Categoría seleccionada: ${categories.find(c => c.category_id === selectedCategories[0])?.name || ''}`
                 : 'Ninguna categoría seleccionada'
-              : `${selectedCategories.length} categoría(s) seleccionada(s)`
-            }
+              : `${selectedCategories.length} categoría(s) seleccionada(s)`}
           </div>
           <div className="flex gap-2">
             {!singleSelect && (
-              <button
-                onClick={() => onCategorySelect([])}
-                className="btn btn-ghost btn-sm"
-              >
+              <button onClick={() => onCategorySelect([])} className="btn btn-ghost btn-sm">
                 Limpiar filtros
               </button>
             )}
-            <button
-              onClick={onClose}
-              className="btn btn-primary btn-sm"
-            >
+            <button onClick={onClose} className="btn btn-primary btn-sm">
               {singleSelect ? 'Seleccionar' : 'Aplicar filtros'}
             </button>
           </div>
@@ -392,7 +390,8 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
               {categoryQuestions.length > 0 ? (
                 <div className="space-y-4">
                   <p>
-                    Esta categoría tiene <strong>{categoryQuestions.length}</strong> pregunta(s) asociada(s).
+                    Esta categoría tiene <strong>{categoryQuestions.length}</strong> pregunta(s)
+                    asociada(s).
                   </p>
                   <div className="alert alert-warning">
                     <div className="flex flex-col gap-2">
@@ -402,7 +401,7 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
                           type="checkbox"
                           className="checkbox checkbox-error"
                           checked={deleteQuestionsToo}
-                          onChange={(e) => setDeleteQuestionsToo(e.target.checked)}
+                          onChange={e => setDeleteQuestionsToo(e.target.checked)}
                         />
                         <span className="label-text">
                           Eliminar también las {categoryQuestions.length} pregunta(s)
@@ -421,20 +420,13 @@ const CategoryFilter = ({ isOpen, onClose, selectedCategories, onCategorySelect,
               )}
             </div>
             <div className="modal-action">
-              <button
-                className="btn btn-ghost"
-                onClick={cancelDeleteCategory}
-              >
+              <button className="btn btn-ghost" onClick={cancelDeleteCategory}>
                 Cancelar
               </button>
-              <button
-                className="btn btn-error"
-                onClick={confirmDeleteCategory}
-              >
+              <button className="btn btn-error" onClick={confirmDeleteCategory}>
                 {categoryQuestions.length > 0 && deleteQuestionsToo
                   ? `Eliminar categoría y ${categoryQuestions.length} pregunta(s)`
-                  : 'Eliminar categoría'
-                }
+                  : 'Eliminar categoría'}
               </button>
             </div>
           </div>

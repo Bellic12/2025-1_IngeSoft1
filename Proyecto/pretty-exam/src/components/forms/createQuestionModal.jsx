@@ -29,17 +29,11 @@ const CreateQuestionModal = ({ fetchQuestions }) => {
           <div className="modal-box w-full max-w-2xl bg-base-100">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold">Crear Nueva Pregunta</h3>
-              <button
-                className="btn btn-ghost btn-circle"
-                onClick={handleCloseModal}
-              >
+              <button className="btn btn-ghost btn-circle" onClick={handleCloseModal}>
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <CreateQuestion
-              fetchQuestions={fetchQuestions}
-              onClose={handleCloseModal}
-            />
+            <CreateQuestion fetchQuestions={fetchQuestions} onClose={handleCloseModal} />
           </div>
         </div>
       )}

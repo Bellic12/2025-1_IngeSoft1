@@ -54,7 +54,6 @@ const Questions = () => {
     }, 300) // 300ms debounce
 
     return () => clearTimeout(timeoutId)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, selectedCategories])
 
   // Initial load

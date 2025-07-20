@@ -264,14 +264,11 @@ const QuestionController = {
           }
         );
       }
-      await sequelize.query(
-        "DELETE FROM `Option` WHERE `question_id` = ?",
-        {
-          replacements: [id],
-          transaction: t,
-          type: sequelize.QueryTypes.DELETE
-        }
-      );
+      await sequelize.query("DELETE FROM `Option` WHERE `question_id` = ?", {
+        replacements: [id],
+        transaction: t,
+        type: sequelize.QueryTypes.DELETE
+      });
       await Question.update(
         {
           text: data.text,
@@ -282,11 +279,14 @@ const QuestionController = {
       );
       if (data.options && data.options.length > 0) {
         for (const opt of data.options) {
-          await Option.create({
-            text: opt.text,
-            is_correct: opt.is_correct,
-            question_id: id
-          }, { transaction: t });
+          await Option.create(
+            {
+              text: opt.text,
+              is_correct: opt.is_correct,
+              question_id: id
+            },
+            { transaction: t }
+          );
         }
       }
       await sequelize.query("PRAGMA foreign_keys = ON", {
@@ -350,12 +350,7 @@ const QuestionController = {
                     "REPLACE",
                     sequelize.fn(
                       "REPLACE",
-                      sequelize.fn(
-                        "REPLACE",
-                        sequelize.col("Question.text"),
-                        "á",
-                        "a"
-                      ),
+                      sequelize.fn("REPLACE", sequelize.col("Question.text"), "á", "a"),
                       "é",
                       "e"
                     ),
@@ -386,12 +381,7 @@ const QuestionController = {
                       "REPLACE",
                       sequelize.fn(
                         "REPLACE",
-                        sequelize.fn(
-                          "REPLACE",
-                          sequelize.col("category.name"),
-                          "á",
-                          "a"
-                        ),
+                        sequelize.fn("REPLACE", sequelize.col("category.name"), "á", "a"),
                         "é",
                         "e"
                       ),

@@ -30,7 +30,6 @@ const ExamSimulation = () => {
   const isLastQuestion = currentQuestionIndex === questions.length - 1
   const isFirstQuestion = currentQuestionIndex === 0
 
-  // eslint-disable-next-line
   useEffect(() => {
     const fetchData = async () => {
       setLoadingExam(true)

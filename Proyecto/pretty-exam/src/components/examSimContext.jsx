@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 // --- Contexto global para simulación ---
 const ExamSimContext = createContext()
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useExamSim = () => useContext(ExamSimContext)
 
 export function ExamSimProvider({ children }) {
