@@ -131,7 +131,7 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
           <input
             type="text"
             placeholder="Escribe la pregunta aquí"
-            className="input input-bordered w-full"
+            className="input w-full"
             value={text}
             onChange={e => setText(e.target.value)}
             required
@@ -145,11 +145,7 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
             <label className="label">
               <span className="label-text">Tipo de pregunta</span>
             </label>
-            <select
-              className="select select-bordered w-full"
-              value={type}
-              onChange={handleOnChangeType}
-            >
+            <select className="select w-full" value={type} onChange={handleOnChangeType}>
               <option value="multiple_choice">Opción múltiple</option>
               <option value="true_false">Verdadero/Falso</option>
             </select>
@@ -211,7 +207,7 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
                 <input
                   type="text"
                   placeholder={`Opción ${index + 1}`}
-                  className="input input-bordered w-full"
+                  className="input w-full"
                   value={option.text}
                   onChange={e => handleOptionTextChange(e, index)}
                   required
@@ -223,7 +219,7 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
                   onChange={e => handleOnSelectOption(e, index)}
                 />
                 <button
-                  className="btn btn-secondary btn-sm"
+                  className="btn btn-primary btn-outline btn-sm rounded-xl"
                   type="button"
                   onClick={() => handleRemoveOption(index)}
                 >
@@ -236,7 +232,7 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  className="input input-bordered w-full bg-green-800"
+                  className="input w-full bg-green-800"
                   value="Verdadero"
                   readOnly
                 />
@@ -249,12 +245,7 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
                 />
               </div>
               <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  className="input input-bordered w-full bg-red-800"
-                  value="Falso"
-                  readOnly
-                />
+                <input type="text" className="input w-full bg-red-800" value="Falso" readOnly />
                 <input
                   type="radio"
                   name="true_false_option_modal"
@@ -266,13 +257,13 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
             </>
           )}
           {type === 'multiple_choice' && (
-            <button className="btn btn-secondary" type="button" onClick={handleAddOption}>
+            <button className="btn btn-primary btn-outline" type="button" onClick={handleAddOption}>
               Añadir opción
             </button>
           )}
         </div>
 
-        <button className="btn btn-primary" type="submit" disabled={loading}>
+        <button className="btn btn-secondary btn-outline" type="submit" disabled={loading}>
           {loading ? (
             <span className="loading loading-spinner loading-sm"></span>
           ) : (

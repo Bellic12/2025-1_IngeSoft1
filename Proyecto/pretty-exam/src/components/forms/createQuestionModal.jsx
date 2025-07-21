@@ -26,7 +26,7 @@ const CreateQuestionModal = ({ fetchQuestions }) => {
       {/* Modal */}
       {showModal && (
         <div className="modal modal-open">
-          <div className="modal-box w-full max-w-2xl bg-base-100">
+          <div className="modal-box flex flex-col gap-4 bg-base-300">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold">Crear Nueva Pregunta</h3>
               <button className="btn btn-ghost btn-circle" onClick={handleCloseModal}>

@@ -30,7 +30,14 @@ const Layout = () => {
           `}
         >
           <div className="p-6 pt-16 lg:pt-6">
-            <h1 className="text-xl font-bold mb-8">Pretty Exam</h1>
+            <div className="flex flex-col items-center mb-8">
+              <img
+                src="/Logo.png"
+                alt="Logo Pretty Exam"
+                className="w-20 h-20 mb-2 rounded-lg shadow"
+              />
+              <h1 className="text-xl font-bold">Pretty Exam</h1>
+            </div>
             <ul className="menu space-y-2 w-full">
               <li>
                 <Link
