@@ -1,11 +1,28 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { BookOpen, HelpCircle, Menu, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ExamSimProvider } from '../components/examSimContext'
 
 const Layout = () => {
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [logoSrc, setLogoSrc] = useState('/Logo.png')
+
+  useEffect(() => {
+    // En Electron empaquetado, usar la API de recursos
+    if (window.resourcesAPI && typeof window.resourcesAPI.getLogoPath === 'function') {
+      window.resourcesAPI
+        .getLogoPath()
+        .then(path => {
+          setLogoSrc(`file://${path}`)
+        })
+        .catch(err => {
+          console.error('Error getting logo from resources:', err)
+          setLogoSrc('/Logo.png') // Fallback
+        })
+    }
+    // En desarrollo, usar la ruta estática (ya está configurada por defecto)
+  }, [])
 
   return (
     <>
@@ -32,9 +49,16 @@ const Layout = () => {
           <div className="p-6 pt-16 lg:pt-6">
             <div className="flex flex-col items-center mb-8">
               <img
-                src="/Logo.png"
+                src={logoSrc}
                 alt="Logo Pretty Exam"
                 className="w-20 h-20 mb-2 rounded-lg shadow"
+                onError={e => {
+                  // Fallback: intentar con la misma ruta
+                  e.target.src = '/Logo.png'
+                }}
+                onLoad={() => {
+                  // Logo cargado exitosamente
+                }}
               />
               <h1 className="text-xl font-bold">Pretty Exam</h1>
             </div>

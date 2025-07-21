@@ -22,7 +22,7 @@ function getDatabasePath() {
     }
   } else {
     // En desarrollo: usar la ruta actual
-    dbPath = join(__dirname, '..', '..', 'pretty_exam.db')
+    dbPath = join(__dirname, '..', 'pretty_exam.db')
   }
 
   return dbPath
