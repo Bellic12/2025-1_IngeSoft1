@@ -79,70 +79,75 @@ const UpdateExam = ({ exam, fetchExams }) => {
         <Pencil className="w-4 h-4" />
       </button>
       <dialog id={'modal_update_exam' + exam.exam_id} className="modal">
-        <form
-          method="dialog"
-          className="modal-box flex flex-col gap-4 bg-base-300"
-          onSubmit={handleSubmit}
-        >
-          <button
-            className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-            onClick={e => {
-              e.preventDefault()
-              handleCloseModal()
-            }}
-          >
-            ✕
-          </button>
+        <div className="modal-box flex flex-col gap-4 bg-base-300">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <button
+              className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+              onClick={e => {
+                e.preventDefault()
+                handleCloseModal()
+              }}
+            >
+              ✕
+            </button>
 
-          <h3 className="font-bold text-lg text-base-content">Actualizar examen</h3>
+            <h3 className="font-bold text-lg text-base-content">Actualizar examen</h3>
 
-          {/* Nombre */}
-          <div className="form-control flex flex-col gap-2">
-            <label className="label">
-              <span className="label-text">Nombre</span>
-            </label>
-            <input
-              type="text"
-              placeholder="Nombre del examen"
-              className="input input-bordered w-full bg-base-100"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              required
-            />
-          </div>
+            {/* Nombre */}
+            <div className="form-control flex flex-col gap-2">
+              <label className="label">
+                <span className="label-text">Nombre</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Nombre del examen"
+                className="input input-bordered w-full bg-base-100"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                required
+              />
+            </div>
 
-          {/* Descripción */}
-          <div className="form-control flex flex-col gap-2">
-            <label className="label">
-              <span className="label-text">Descripción</span>
-            </label>
-            <textarea
-              placeholder="Descripción del examen"
-              className="textarea textarea-bordered w-full h-24 bg-base-100 resize-none"
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              required
-            />
-          </div>
+            {/* Descripción */}
+            <div className="form-control flex flex-col gap-2">
+              <label className="label">
+                <span className="label-text">Descripción</span>
+              </label>
+              <textarea
+                placeholder="Descripción del examen"
+                className="textarea textarea-bordered w-full h-24 bg-base-100 resize-none"
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                required
+              />
+            </div>
 
-          {/* Duración */}
-          <div className="form-control flex flex-col gap-2">
-            <label className="label">
-              <span className="label-text">Duración (minutos)</span>
-            </label>
-            <input
-              type="number"
-              placeholder="Ej: 60"
-              className="input input-bordered w-full bg-base-100"
-              value={duration}
-              onChange={e => setDuration(e.target.value)}
-              required
-            />
-          </div>
+            {/* Duración */}
+            <div className="form-control flex flex-col gap-2">
+              <label className="label">
+                <span className="label-text">Duración (minutos)</span>
+              </label>
+              <input
+                type="number"
+                placeholder="Ej: 60"
+                className="input input-bordered w-full bg-base-100"
+                value={duration}
+                onChange={e => setDuration(e.target.value)}
+                required
+              />
+            </div>
 
-          <button className="btn btn-warning mt-4" type="submit" disabled={loading}>
-            {loading ? <span className="loading loading-spinner loading-sm"></span> : 'Actualizar'}
-          </button>
+            <button className="btn btn-warning mt-4" type="submit" disabled={loading}>
+              {loading ? (
+                <span className="loading loading-spinner loading-sm"></span>
+              ) : (
+                'Actualizar'
+              )}
+            </button>
+          </form>
+        </div>
+        <form method="dialog" className="modal-backdrop">
+          <button onClick={handleCloseModal}>close</button>
         </form>
       </dialog>
     </>

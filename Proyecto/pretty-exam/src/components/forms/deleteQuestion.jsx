@@ -66,6 +66,9 @@ const DeleteQuestion = ({ question, fetchQuestions }) => {
             </button>
           </div>
         </div>
+        <form method="dialog" className="modal-backdrop">
+          <button onClick={handleCloseModal}>close</button>
+        </form>
       </dialog>
     </>
   )

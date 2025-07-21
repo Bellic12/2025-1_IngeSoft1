@@ -15,6 +15,11 @@ const CreateExam = ({ fetchExams }) => {
     document.getElementById('modal_create_exam').showModal()
   }
 
+  const handleCloseModal = () => {
+    document.getElementById('modal_create_exam').close()
+    resetForm()
+  }
+
   const resetForm = () => {
     setName('')
     setDescription('')
@@ -66,8 +71,7 @@ const CreateExam = ({ fetchExams }) => {
             className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
             onClick={e => {
               e.preventDefault()
-              document.getElementById('modal_create_exam').close()
-              resetForm()
+              handleCloseModal()
             }}
           >
             ✕
@@ -122,6 +126,9 @@ const CreateExam = ({ fetchExams }) => {
           <button className="btn btn-primary mt-4" type="submit" disabled={loading}>
             {loading ? <span className="loading loading-spinner loading-sm"></span> : 'Crear'}
           </button>
+        </form>
+        <form method="dialog" className="modal-backdrop">
+          <button onClick={handleCloseModal}>close</button>
         </form>
       </dialog>
     </>

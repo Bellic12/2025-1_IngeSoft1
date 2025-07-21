@@ -207,182 +207,187 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
         <Pencil className="w-4 h-4" />
       </button>
       <dialog id={'modal_update_question' + question.question_id} className="modal">
-        <form
-          method="dialog"
-          className="modal-box flex flex-col gap-4 bg-base-300"
-          onSubmit={handleSubmit}
-        >
-          <button
-            className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-            onClick={handleCloseModal}
-          >
-            ✕
-          </button>
-          <h3 className="font-bold text-lg">Editar pregunta</h3>
-          {/* Question */}
-          <div className="form-control flex flex-col gap-2">
-            <label className="label">
-              <span className="label-text">Pregunta</span>
-            </label>
-            <input
-              type="text"
-              placeholder="Escribe la pregunta aquí"
-              className="input w-full"
-              value={text}
-              onChange={e => setText(e.target.value)}
-              required
-            />
-          </div>
-          {/* Type and Category row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Type */}
+        <div className="modal-box flex flex-col gap-4 bg-base-300">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <button
+              className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+              onClick={handleCloseModal}
+            >
+              ✕
+            </button>
+            <h3 className="font-bold text-lg">Editar pregunta</h3>
+            {/* Question */}
             <div className="form-control flex flex-col gap-2">
               <label className="label">
-                <span className="label-text">Tipo de pregunta</span>
+                <span className="label-text">Pregunta</span>
               </label>
-              <select
-                className="select select-bordered w-full"
-                value={type}
-                onChange={handleOnChangeType}
-              >
-                <option value="multiple_choice">Opción múltiple</option>
-                <option value="true_false">Verdadero/Falso</option>
-              </select>
+              <input
+                type="text"
+                placeholder="Escribe la pregunta aquí"
+                className="input w-full"
+                value={text}
+                onChange={e => setText(e.target.value)}
+                required
+              />
             </div>
+            {/* Type and Category row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Type */}
+              <div className="form-control flex flex-col gap-2">
+                <label className="label">
+                  <span className="label-text">Tipo de pregunta</span>
+                </label>
+                <select
+                  className="select select-bordered w-full"
+                  value={type}
+                  onChange={handleOnChangeType}
+                >
+                  <option value="multiple_choice">Opción múltiple</option>
+                  <option value="true_false">Verdadero/Falso</option>
+                </select>
+              </div>
 
-            {/* Category */}
+              {/* Category */}
+              <div className="form-control flex flex-col gap-2">
+                <label className="label">
+                  <span className="label-text">Categoría</span>
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-error text-white flex-1 justify-start"
+                    onClick={() => {
+                      setModalWasOpen(true)
+                      document
+                        .getElementById('modal_update_question' + question.question_id)
+                        .close()
+                      setTimeout(() => setShowCategorySelector(true), 100)
+                    }}
+                  >
+                    <Tag className="w-4 h-4" />
+                    {getCurrentCategoryName()}
+                  </button>
+                  {categoryId && (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-square"
+                        onClick={() => {
+                          setEditingCategoryId(categoryId)
+                          setModalWasOpen(true)
+                          document
+                            .getElementById('modal_update_question' + question.question_id)
+                            .close()
+                          setTimeout(() => setShowCategorySelector(true), 100)
+                        }}
+                        title="Editar categoría"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-square"
+                        onClick={() => setCategoryId(null)}
+                        title="Limpiar categoría"
+                      >
+                        ✕
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+            {/* Options */}
             <div className="form-control flex flex-col gap-2">
               <label className="label">
-                <span className="label-text">Categoría</span>
+                <span className="label-text">Opciones</span>
               </label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className="btn btn-error text-white flex-1 justify-start"
-                  onClick={() => {
-                    setModalWasOpen(true)
-                    document.getElementById('modal_update_question' + question.question_id).close()
-                    setTimeout(() => setShowCategorySelector(true), 100)
-                  }}
-                >
-                  <Tag className="w-4 h-4" />
-                  {getCurrentCategoryName()}
-                </button>
-                {categoryId && (
-                  <>
+              {type === 'multiple_choice' ? (
+                options.map((option, index) => (
+                  <div key={option.option_id || index} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder={`Opción ${index + 1}`}
+                      className="input w-full"
+                      value={option.text}
+                      onChange={e => handleOptionTextChange(e, index)}
+                      required
+                    />
+                    <input
+                      type="checkbox"
+                      className="checkbox"
+                      checked={!!option.isCorrect}
+                      onChange={e => handleOnSelectOption(e, index)}
+                    />
                     <button
+                      className="btn btn-primary btn-outline btn-sm rounded-xl"
                       type="button"
-                      className="btn btn-ghost btn-square"
-                      onClick={() => {
-                        setEditingCategoryId(categoryId)
-                        setModalWasOpen(true)
-                        document
-                          .getElementById('modal_update_question' + question.question_id)
-                          .close()
-                        setTimeout(() => setShowCategorySelector(true), 100)
-                      }}
-                      title="Editar categoría"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-square"
-                      onClick={() => setCategoryId(null)}
-                      title="Limpiar categoría"
+                      onClick={() => handleRemoveOption(index)}
                     >
                       ✕
                     </button>
-                  </>
-                )}
-              </div>
+                  </div>
+                ))
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      className="input w-full bg-green-800"
+                      value="Verdadero"
+                      readOnly
+                    />
+                    <input
+                      type="radio"
+                      name={`true_false_option_${question.question_id}`}
+                      className="radio"
+                      checked={!!options.find(opt => opt.text === 'Verdadero')?.isCorrect}
+                      onChange={() => {
+                        const newOptions = options.map(opt => ({
+                          ...opt,
+                          isCorrect: opt.text === 'Verdadero',
+                        }))
+                        setOptions(newOptions)
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input type="text" className="input w-full bg-red-800" value="Falso" readOnly />
+                    <input
+                      type="radio"
+                      name={`true_false_option_${question.question_id}`}
+                      className="radio"
+                      checked={!!options.find(opt => opt.text === 'Falso')?.isCorrect}
+                      onChange={() => {
+                        const newOptions = options.map(opt => ({
+                          ...opt,
+                          isCorrect: opt.text === 'Falso',
+                        }))
+                        setOptions(newOptions)
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+              {type === 'multiple_choice' && (
+                <button
+                  className="btn btn-primary btn-outline"
+                  type="button"
+                  onClick={handleAddOption}
+                >
+                  Añadir opción
+                </button>
+              )}
             </div>
-          </div>
-          {/* Options */}
-          <div className="form-control flex flex-col gap-2">
-            <label className="label">
-              <span className="label-text">Opciones</span>
-            </label>
-            {type === 'multiple_choice' ? (
-              options.map((option, index) => (
-                <div key={option.option_id || index} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder={`Opción ${index + 1}`}
-                    className="input w-full"
-                    value={option.text}
-                    onChange={e => handleOptionTextChange(e, index)}
-                    required
-                  />
-                  <input
-                    type="checkbox"
-                    className="checkbox"
-                    checked={!!option.isCorrect}
-                    onChange={e => handleOnSelectOption(e, index)}
-                  />
-                  <button
-                    className="btn btn-primary btn-outline btn-sm rounded-xl"
-                    type="button"
-                    onClick={() => handleRemoveOption(index)}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))
-            ) : (
-              <>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    className="input w-full bg-green-800"
-                    value="Verdadero"
-                    readOnly
-                  />
-                  <input
-                    type="radio"
-                    name={`true_false_option_${question.question_id}`}
-                    className="radio"
-                    checked={!!options.find(opt => opt.text === 'Verdadero')?.isCorrect}
-                    onChange={() => {
-                      const newOptions = options.map(opt => ({
-                        ...opt,
-                        isCorrect: opt.text === 'Verdadero',
-                      }))
-                      setOptions(newOptions)
-                    }}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <input type="text" className="input w-full bg-red-800" value="Falso" readOnly />
-                  <input
-                    type="radio"
-                    name={`true_false_option_${question.question_id}`}
-                    className="radio"
-                    checked={!!options.find(opt => opt.text === 'Falso')?.isCorrect}
-                    onChange={() => {
-                      const newOptions = options.map(opt => ({
-                        ...opt,
-                        isCorrect: opt.text === 'Falso',
-                      }))
-                      setOptions(newOptions)
-                    }}
-                  />
-                </div>
-              </>
-            )}
-            {type === 'multiple_choice' && (
-              <button
-                className="btn btn-primary btn-outline"
-                type="button"
-                onClick={handleAddOption}
-              >
-                Añadir opción
-              </button>
-            )}
-          </div>
-          <button className="btn btn-secondary btn-outline" type="submit" disabled={loading}>
-            <span className={loading ? 'loading' : ''}>{loading ? '' : 'Actualizar pregunta'}</span>
-          </button>
+            <button className="btn btn-secondary btn-outline" type="submit" disabled={loading}>
+              <span className={loading ? 'loading' : ''}>
+                {loading ? '' : 'Actualizar pregunta'}
+              </span>
+            </button>
+          </form>
+        </div>
+        <form method="dialog" className="modal-backdrop">
+          <button onClick={handleCloseModal}>close</button>
         </form>
       </dialog>
 
