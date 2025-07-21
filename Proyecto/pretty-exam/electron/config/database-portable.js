@@ -11,9 +11,9 @@ function getDatabasePath() {
   let dbPath
 
   if (app.isPackaged) {
-    // En producción: usar el directorio de la aplicación
-    const appDataPath = app.getPath('userData')
-    dbPath = join(appDataPath, 'pretty_exam.db')
+    // En producción: usar el directorio donde está el ejecutable
+    const execPath = path.dirname(process.execPath)
+    dbPath = join(execPath, 'pretty_exam.db')
 
     // Copiar la DB desde resources si no existe
     const sourcePath = join(process.resourcesPath, 'pretty_exam.db')

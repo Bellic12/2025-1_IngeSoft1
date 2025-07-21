@@ -11,6 +11,12 @@
     "dist",
     "dist-electron"
   ],
+  "extraResources": [
+    {
+      "from": "pretty_exam.db",
+      "to": "pretty_exam.db"
+    }
+  ],
   "mac": {
     "target": [
       "dmg"
