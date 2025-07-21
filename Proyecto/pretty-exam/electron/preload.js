@@ -60,13 +60,6 @@ contextBridge.exposeInMainWorld('categoryAPI', {
   nameExists: (name, excludeId) => ipcRenderer.invoke('categories:nameExists', name, excludeId),
 })
 
-// AI API
-contextBridge.exposeInMainWorld('aiAPI', {
-  explainQuestion: (questionId, optionSelectedId) =>
-    ipcRenderer.invoke('ai:explainQuestion', questionId, optionSelectedId),
-  feedbackExam: (examId, resultId) => ipcRenderer.invoke('ai:feedbackExam', examId, resultId),
-})
-
 // Result API
 contextBridge.exposeInMainWorld('resultAPI', {
   getAll: () => ipcRenderer.invoke('results:getAll'),
@@ -78,7 +71,18 @@ contextBridge.exposeInMainWorld('resultAPI', {
 // UserAnswer API
 contextBridge.exposeInMainWorld('userAnswerAPI', {
   getAll: () => ipcRenderer.invoke('userAnswers:getAll'),
-  getById: (resultId, questionId) => ipcRenderer.invoke('userAnswers:getById', resultId, questionId),
+  getById: (resultId, questionId) =>
+    ipcRenderer.invoke('userAnswers:getById', resultId, questionId),
   create: data => ipcRenderer.invoke('userAnswers:create', data),
   delete: (resultId, questionId) => ipcRenderer.invoke('userAnswers:delete', resultId, questionId),
+})
+
+// AI API
+contextBridge.exposeInMainWorld('aiAPI', {
+  extractPdfText: buffer => ipcRenderer.invoke('ai:extractPdfText', buffer),
+  generateQuestionsFromPDF: data => ipcRenderer.invoke('ai:generateQuestionsFromPDF', data),
+  generateQuestions: data => ipcRenderer.invoke('ai:generateQuestions', data),
+  explainQuestion: (questionId, optionSelectedId) =>
+    ipcRenderer.invoke('ai:explainQuestion', questionId, optionSelectedId),
+  feedbackExam: (examId, resultId) => ipcRenderer.invoke('ai:feedbackExam', examId, resultId),
 })

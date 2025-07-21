@@ -48,10 +48,6 @@ electron.contextBridge.exposeInMainWorld("categoryAPI", {
   delete: (id) => electron.ipcRenderer.invoke("categories:delete", id),
   nameExists: (name, excludeId) => electron.ipcRenderer.invoke("categories:nameExists", name, excludeId)
 });
-electron.contextBridge.exposeInMainWorld("aiAPI", {
-  explainQuestion: (questionId, optionSelectedId) => electron.ipcRenderer.invoke("ai:explainQuestion", questionId, optionSelectedId),
-  feedbackExam: (examId, resultId) => electron.ipcRenderer.invoke("ai:feedbackExam", examId, resultId)
-});
 electron.contextBridge.exposeInMainWorld("resultAPI", {
   getAll: () => electron.ipcRenderer.invoke("results:getAll"),
   getById: (id) => electron.ipcRenderer.invoke("results:getById", id),
@@ -63,4 +59,11 @@ electron.contextBridge.exposeInMainWorld("userAnswerAPI", {
   getById: (resultId, questionId) => electron.ipcRenderer.invoke("userAnswers:getById", resultId, questionId),
   create: (data) => electron.ipcRenderer.invoke("userAnswers:create", data),
   delete: (resultId, questionId) => electron.ipcRenderer.invoke("userAnswers:delete", resultId, questionId)
+});
+electron.contextBridge.exposeInMainWorld("aiAPI", {
+  extractPdfText: (buffer) => electron.ipcRenderer.invoke("ai:extractPdfText", buffer),
+  generateQuestionsFromPDF: (data) => electron.ipcRenderer.invoke("ai:generateQuestionsFromPDF", data),
+  generateQuestions: (data) => electron.ipcRenderer.invoke("ai:generateQuestions", data),
+  explainQuestion: (questionId, optionSelectedId) => electron.ipcRenderer.invoke("ai:explainQuestion", questionId, optionSelectedId),
+  feedbackExam: (examId, resultId) => electron.ipcRenderer.invoke("ai:feedbackExam", examId, resultId)
 });

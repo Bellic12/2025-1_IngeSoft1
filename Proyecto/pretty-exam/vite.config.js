@@ -15,7 +15,13 @@ export default defineConfig({
         vite: {
           build: {
             rollupOptions: {
-              external: ['sqlite3', 'sequelize', '@libsql/client', '@libsql/win32-x64-msvc'],
+              external: [
+                'sqlite3',
+                'sequelize',
+                '@libsql/client',
+                '@libsql/win32-x64-msvc',
+                'pdfjs-dist',
+              ],
               plugins: [
                 commonjs({
                   include: /node_modules/,

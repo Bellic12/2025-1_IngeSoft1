@@ -197,32 +197,55 @@ const QuestionController = {
     }
     return question.get({ plain: true });
   },
-  // Create a new question with options
+  // Create a new question with options - UPDATED
   create: async (data) => {
     const t = await sequelize.transaction();
     try {
-      const question = await Question.create(
-        {
-          text: data.text,
-          type: data.type,
-          category_id: data.category_id
-        },
-        { transaction: t }
-      );
-      for (const opt of data.options) {
-        await Option.create(
-          {
-            text: opt.text,
-            is_correct: opt.is_correct,
-            question_id: question.question_id
-          },
-          { transaction: t }
-        );
+      console.log("QuestionController: Creando pregunta con datos:", data);
+      const categoryName = data.category_name || "General";
+      console.log("QuestionController: Nombre de categoría a usar:", categoryName);
+      let category = await Category.findOne({
+        where: { name: categoryName },
+        transaction: t
+      });
+      if (!category) {
+        console.log("QuestionController: Creando nueva categoría:", categoryName);
+        category = await Category.create({ name: categoryName }, { transaction: t });
+        console.log("QuestionController: Categoría creada:", category.get({ plain: true }));
+      } else {
+        console.log("QuestionController: Categoría encontrada:", category.get({ plain: true }));
+      }
+      console.log("QuestionController: categoryId final:", category.category_id);
+      const questionData = {
+        text: data.text,
+        type: data.type,
+        category_id: category.category_id,
+        // Usar la categoría encontrada/creada
+        source: data.source || "manual"
+      };
+      console.log("QuestionController: Creando pregunta con datos:", questionData);
+      const question = await Question.create(questionData, { transaction: t });
+      console.log("QuestionController: Pregunta creada:", question.get({ plain: true }));
+      if (data.options && Array.isArray(data.options)) {
+        console.log("QuestionController: Creando opciones:", data.options.length);
+        for (const opt of data.options) {
+          await Option.create(
+            {
+              text: opt.text,
+              is_correct: opt.is_correct,
+              question_id: question.question_id
+            },
+            { transaction: t }
+          );
+        }
       }
       await t.commit();
-      return question;
+      console.log("QuestionController: Transacción confirmada");
+      const createdQuestion = await QuestionController.getById(question.question_id);
+      return createdQuestion;
     } catch (err) {
       await t.rollback();
+      console.error("QuestionController: Error creando pregunta:", err);
       throw err;
     }
   },
@@ -303,10 +326,7 @@ const QuestionController = {
     if (searchConditions.length > 0) {
       if (Object.keys(whereClause).length > 0) {
         whereClause = {
-          [Op.and]: [
-            whereClause,
-            { [Op.or]: searchConditions }
-          ]
+          [Op.and]: [whereClause, { [Op.or]: searchConditions }]
         };
       } else {
         whereClause = {
@@ -622,10 +642,142 @@ const ResultController = {
     return await Result.destroy({ where: { result_id: id } });
   }
 };
+async function loadPdfJs() {
+  try {
+    console.log("pdfUtils: Cargando PDF.js (legacy mjs)...");
+    const pdfjsLib = await import("./pdf-D3NweMaE.js");
+    console.log("pdfUtils: PDF.js legacy mjs cargado exitosamente");
+    if (pdfjsLib.GlobalWorkerOptions) {
+      try {
+        const workerPath = "pdfjs-dist/legacy/build/pdf.worker.mjs";
+        pdfjsLib.GlobalWorkerOptions.workerSrc = workerPath;
+        console.log("pdfUtils: Worker configurado:", workerPath);
+      } catch (workerError) {
+        console.log("pdfUtils: No se pudo configurar worker, usando modo compatibilidad");
+        pdfjsLib.GlobalWorkerOptions.workerSrc = false;
+      }
+    }
+    console.log("pdfUtils: PDF.js configurado exitosamente");
+    return pdfjsLib;
+  } catch (error) {
+    console.error("pdfUtils: Error crítico al cargar PDF.js:", error);
+    throw new Error(`Could not load PDF.js library: ${error.message}`);
+  }
+}
+async function readPdfText(pdfBuffer) {
+  try {
+    console.log("pdfUtils: Iniciando lectura de PDF, buffer size:", pdfBuffer.byteLength);
+    const pdfjsLib = await loadPdfJs();
+    console.log("pdfUtils: PDF.js cargado correctamente");
+    const pdfData = pdfBuffer instanceof Uint8Array ? pdfBuffer : new Uint8Array(pdfBuffer);
+    console.log("pdfUtils: Creando loading task...");
+    const loadingTask = pdfjsLib.getDocument({
+      data: pdfData,
+      verbosity: 0,
+      disableFontFace: true,
+      disableStream: true,
+      disableRange: true
+    });
+    console.log("pdfUtils: Esperando promesa de PDF...");
+    const pdf = await loadingTask.promise;
+    console.log("pdfUtils: PDF cargado exitosamente, páginas:", pdf.numPages);
+    let fullText = "";
+    let processedPages = 0;
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      try {
+        console.log(`pdfUtils: Procesando página ${pageNum}/${pdf.numPages}`);
+        const page = await pdf.getPage(pageNum);
+        console.log(`pdfUtils: Página ${pageNum} obtenida, extrayendo texto...`);
+        const textContent = await page.getTextContent();
+        console.log(
+          `pdfUtils: Texto de página ${pageNum} extraído, items:`,
+          textContent.items.length
+        );
+        const pageText = textContent.items.map((item) => item && item.str ? item.str : "").filter((str) => str.trim().length > 0).join(" ");
+        if (pageText.trim().length > 0) {
+          fullText += pageText + "\n\n";
+          processedPages++;
+        }
+        console.log(`pdfUtils: Página ${pageNum} procesada, caracteres: ${pageText.length}`);
+      } catch (pageError) {
+        console.error(`pdfUtils: Error procesando página ${pageNum}:`, pageError.message);
+      }
+    }
+    const result = {
+      text: fullText.trim(),
+      pages: pdf.numPages
+    };
+    console.log("pdfUtils: Extracción completada");
+    console.log("pdfUtils: Páginas procesadas exitosamente:", processedPages, "de", pdf.numPages);
+    console.log("pdfUtils: Total caracteres:", result.text.length);
+    if (result.text.length === 0) {
+      throw new Error(
+        "No se pudo extraer texto del PDF. El archivo puede contener solo imágenes o estar protegido."
+      );
+    }
+    if (processedPages === 0) {
+      throw new Error("No se pudo procesar ninguna página del PDF.");
+    }
+    return result;
+  } catch (error) {
+    console.error("pdfUtils: Error crítico extracting text from PDF:", error);
+    console.error("pdfUtils: Stack trace:", error.stack);
+    let errorMessage = error.message;
+    if (error.message.includes("Could not load PDF.js")) {
+      errorMessage = "No se pudo cargar la librería PDF.js. Verifica la instalación.";
+    } else if (error.message.includes("Invalid PDF")) {
+      errorMessage = "El archivo PDF está corrupto o no es válido.";
+    } else if (error.message.includes("Timeout")) {
+      errorMessage = "El PDF es demasiado complejo o grande para procesar.";
+    }
+    throw new Error(errorMessage);
+  }
+}
 {
   console.log("Gemini API key is not set.");
 }
 const AIController = {
+  // Método para extraer texto del PDF
+  extractPdfText: async (pdfBuffer) => {
+    try {
+      console.log("AIController: Iniciando extracción de PDF, buffer size:", pdfBuffer.byteLength);
+      if (!pdfBuffer || pdfBuffer.byteLength === 0) {
+        throw new Error("Buffer de PDF vacío o inválido");
+      }
+      const header = new Uint8Array(pdfBuffer.slice(0, 4));
+      const headerString = String.fromCharCode(...header);
+      if (!headerString.startsWith("%PDF")) {
+        throw new Error("El archivo no parece ser un PDF válido");
+      }
+      console.log("AIController: PDF header válido:", headerString);
+      const result = await readPdfText(pdfBuffer);
+      console.log("AIController: Extracción exitosa");
+      console.log("AIController: Páginas:", result.pages);
+      console.log("AIController: Caracteres:", result.text.length);
+      console.log("AIController: Primeros 100 caracteres:", result.text.substring(0, 100));
+      return result;
+    } catch (error) {
+      console.error("AIController: Error completo:", error);
+      console.error("AIController: Error stack:", error.stack);
+      let errorMessage = "Error extracting text from PDF";
+      if (error.message.includes("Could not load PDF.js")) {
+        errorMessage = "No se pudo cargar la librería PDF.js";
+      } else if (error.message.includes("Invalid PDF")) {
+        errorMessage = "El archivo PDF está corrupto o no es válido";
+      } else if (error.message.includes("Password required")) {
+        errorMessage = "El PDF está protegido por contraseña";
+      } else {
+        errorMessage = error.message;
+      }
+      throw new Error(errorMessage);
+    }
+  },
+  // Método para generar preguntas usando Gemini AI
+  generateQuestions: async (config) => {
+    {
+      throw new Error("Gemini API key is not set.");
+    }
+  },
   explainQuestion: async (questionId, optionSelectedId) => {
     {
       throw new Error("Gemini API key is not set.");
@@ -638,6 +790,31 @@ const AIController = {
     }
   }
 };
+ipcMain.handle("ai:extractPdfText", async (_, pdfBuffer) => {
+  try {
+    console.log("AI IPC: Recibida solicitud de extracción de PDF, buffer size:", pdfBuffer.byteLength);
+    const result = await AIController.extractPdfText(pdfBuffer);
+    console.log("AI IPC: Extracción completada exitosamente");
+    return result;
+  } catch (error) {
+    console.error("AI IPC: Error en extracción de PDF:", error);
+    throw error;
+  }
+});
+ipcMain.handle("ai:generateQuestionsFromPDF", async (_, { pdfBuffer, config }) => {
+  return await AIController.generateQuestionsFromPDF(pdfBuffer, config);
+});
+ipcMain.handle("ai:generateQuestions", async (_, config) => {
+  try {
+    console.log("AI IPC: Recibida solicitud de generación de preguntas:", config);
+    const result = await AIController.generateQuestions(config);
+    console.log("AI IPC: Generación de preguntas completada exitosamente");
+    return result;
+  } catch (error) {
+    console.error("AI IPC: Error en generación de preguntas:", error);
+    throw error;
+  }
+});
 ipcMain.handle("ai:explainQuestion", async (_, questionId, optionSelectedId) => {
   return await AIController.explainQuestion(questionId, optionSelectedId);
 });

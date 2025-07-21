@@ -3,7 +3,8 @@ import OptionController from './option.controller'
 import ExamController from './exam.controller'
 import ResultController from './result.controller'
 import { boldMarkdownToHtml } from '../utils/markdown'
-import { readPdfText } from '../utils/pdfUtils' // Asumiendo que crearemos esta utilidad
+import { readPdfText } from '../utils/pdfUtils'
+
 const apiKey = null
 
 if (!apiKey) {
@@ -11,70 +12,115 @@ if (!apiKey) {
 }
 
 const AIController = {
-  // Método para generar preguntas a partir de un PDF
-  generateQuestionsFromPDF: async (pdfBuffer, config) => {
+  // Método para extraer texto del PDF
+  extractPdfText: async pdfBuffer => {
+    try {
+      console.log('AIController: Iniciando extracción de PDF, buffer size:', pdfBuffer.byteLength)
+      
+      // Validar que el buffer no esté vacío
+      if (!pdfBuffer || pdfBuffer.byteLength === 0) {
+        throw new Error('Buffer de PDF vacío o inválido')
+      }
+      
+      // Verificar que sea un PDF válido (debe comenzar con %PDF)
+      const header = new Uint8Array(pdfBuffer.slice(0, 4))
+      const headerString = String.fromCharCode(...header)
+      if (!headerString.startsWith('%PDF')) {
+        throw new Error('El archivo no parece ser un PDF válido')
+      }
+      
+      console.log('AIController: PDF header válido:', headerString)
+      
+      const result = await readPdfText(pdfBuffer)
+      console.log('AIController: Extracción exitosa')
+      console.log('AIController: Páginas:', result.pages)
+      console.log('AIController: Caracteres:', result.text.length)
+      console.log('AIController: Primeros 100 caracteres:', result.text.substring(0, 100))
+      
+      return result
+    } catch (error) {
+      console.error('AIController: Error completo:', error)
+      console.error('AIController: Error stack:', error.stack)
+      
+      // Intentar proporcionar información más específica del error
+      let errorMessage = 'Error extracting text from PDF'
+      if (error.message.includes('Could not load PDF.js')) {
+        errorMessage = 'No se pudo cargar la librería PDF.js'
+      } else if (error.message.includes('Invalid PDF')) {
+        errorMessage = 'El archivo PDF está corrupto o no es válido'
+      } else if (error.message.includes('Password required')) {
+        errorMessage = 'El PDF está protegido por contraseña'
+      } else {
+        errorMessage = error.message
+      }
+      
+      throw new Error(errorMessage)
+    }
+  },
+
+  // Método para generar preguntas usando Gemini AI
+  generateQuestions: async config => {
     if (!apiKey) {
       throw new Error('Gemini API key is not set.')
     }
 
     try {
-      // Extraer texto del PDF
-      const text = await readPdfText(pdfBuffer)
+      console.log('AIController: Iniciando generación de preguntas con Gemini')
+      console.log('AIController: Configuración:', config)
 
-      // Construir el prompt para Gemini
+      // Construir el prompt para Gemini con instrucciones específicas
       const prompt = `
-        Actúa como un profesor experto y genera preguntas de examen basadas en el siguiente texto:
-        "${text}"
+Eres un profesor experto creando preguntas de examen. Analiza el siguiente texto y genera exactamente ${config.multipleChoice} preguntas de opción múltiple y ${config.trueFalse} preguntas de verdadero/falso.
 
-        Requisitos:
-        - Generar ${config.multipleChoice} preguntas de opción múltiple
-        - Generar ${config.trueFalse} preguntas de verdadero/falso
-        - Nivel de dificultad: ${config.difficulty}
-        - Categoría: ${config.category}
+TEXTO A ANALIZAR:
+"${config.text}"
 
-        Las preguntas deben seguir este formato JSON exacto:
-        {
-          "questions": [
-            {
-              "text": "Pregunta clara y concisa",
-              "type": "${config.multipleChoice > 0 ? 'multiple_choice' : 'true_false'}",
-              "difficulty": "${config.difficulty}",
-              "category_id": "${config.category}",
-              "points": ${config.difficulty === 'facil' ? 10 : config.difficulty === 'medio' ? 15 : 20},
-              "explanation": "Explicación breve de por qué la respuesta es correcta",
-              "options": [
-                {
-                  "text": "Opción correcta",
-                  "is_correct": true
-                },
-                {
-                  "text": "Opción incorrecta 1",
-                  "is_correct": false
-                },
-                {
-                  "text": "Opción incorrecta 2",
-                  "is_correct": false
-                },
-                {
-                  "text": "Opción incorrecta 3",
-                  "is_correct": false
-                }
-              ]
-            }
-          ]
-        }
-        
-        IMPORTANTE:
-        1. El campo "text" debe contener la pregunta
-        2. Para preguntas true_false, incluir solo dos options con is_correct true o false
-        3. Los campos deben coincidir exactamente con los nombres especificados
-        4. Mantén las respuestas concisas y claras
-        5. Genera EXACTAMENTE el número de preguntas solicitado de cada tipo
-      `
+INSTRUCCIONES:
+1. Lee y comprende completamente el texto
+2. Identifica la materia/categoría principal del contenido (ej: Biología, Historia, Matemáticas, etc.)
+3. Genera preguntas que evalúen comprensión, análisis y conocimiento del texto
+4. Para preguntas de opción múltiple: incluye 2 a 4 opciones, solo una correcta
+5. Para preguntas verdadero/falso: asegúrate que sean claras y verificables
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`
+FORMATO DE RESPUESTA (JSON estricto):
+{
+  "questions": [
+    {
+      "type": "multiple_choice",
+      "text": "Pregunta clara y específica sobre el contenido",
+      "category": "Nombre de la materia/categoría identificada",
+      "options": [
+        {"text": "Opción A (correcta)", "is_correct": true},
+        {"text": "Opción B (incorrecta)", "is_correct": false},
+        {"text": "Opción C (incorrecta)", "is_correct": false},
+        {"text": "Opción D (incorrecta)", "is_correct": false}
+      ],
+      "correctAnswer": 0,
+      "explanation": "Breve explicación de por qué esta respuesta es correcta"
+    },
+    {
+      "type": "true_false",
+      "text": "Afirmación clara que se puede evaluar como verdadera o falsa",
+      "category": "Nombre de la materia/categoría identificada",
+      "correctAnswer": true,
+      "explanation": "Breve explicación de por qué esta afirmación es verdadera o falsa"
+    }
+  ]
+}
+
+IMPORTANTE:
+- Responde SOLO con el JSON, sin texto adicional
+- Todas las preguntas deben estar basadas en el contenido del texto
+- La categoría debe ser consistente y apropiada para el contenido
+- Las preguntas deben ser educativas y de calidad académica
+- Asegúrate de generar exactamente ${config.multipleChoice} preguntas de opción múltiple y ${config.trueFalse} preguntas de verdadero/falso
+      `.trim()
+
+      console.log('AIController: Enviando prompt a Gemini API...')
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
       const body = {
-        contents: [{ parts: [{ text: prompt }] }]
+        contents: [{ parts: [{ text: prompt }] }],
       }
 
       const response = await fetch(url, {
@@ -82,7 +128,7 @@ const AIController = {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
       })
 
       if (!response.ok) {
@@ -90,20 +136,41 @@ const AIController = {
       }
 
       const data = await response.json()
+      console.log('AIController: Respuesta recibida de Gemini API')
+      
       const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
       
       if (!generatedText) {
-        throw new Error('No se pudo generar el contenido')
+        throw new Error('No se pudo generar el contenido desde la API')
       }
 
+      console.log('AIController: Texto generado:', generatedText.substring(0, 200) + '...')
+
       try {
-        const parsedQuestions = JSON.parse(generatedText)
-        return parsedQuestions.questions
-      } catch (error) {
-        throw new Error('Error al parsear las preguntas generadas')
+        // Limpiar el texto antes de parsearlo (remover posibles caracteres extra)
+        const cleanedText = generatedText
+          .replace(/```json\n?/g, '')
+          .replace(/```\n?/g, '')
+          .trim()
+        const parsedQuestions = JSON.parse(cleanedText)
+        
+        if (!parsedQuestions.questions || !Array.isArray(parsedQuestions.questions)) {
+          throw new Error('El formato de respuesta de la API no es válido')
+        }
+
+        console.log(
+          'AIController: Preguntas generadas exitosamente:',
+          parsedQuestions.questions.length
+        )
+        return parsedQuestions
+      } catch (parseError) {
+        console.error('AIController: Error parseando JSON:', parseError)
+        console.error('AIController: Texto a parsear:', generatedText)
+        throw new Error('Error al procesar las preguntas generadas por la API')
       }
     } catch (error) {
-      throw new Error(`Error al generar preguntas: ${error.message}`)
+      console.error('AIController: Error generando preguntas:', error)
+      throw new Error(`Error generating questions: ${error.message}`)
     }
   },
 
@@ -154,7 +221,7 @@ const AIController = {
       `
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
     const body = {
       contents: [
         {
@@ -227,7 +294,7 @@ const AIController = {
       Indica en qué aspectos puede mejorar y qué cosas hizo bien.`
     console.log(prompt)
     // Llamar a Gemini
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
     const body = {
       contents: [
         {

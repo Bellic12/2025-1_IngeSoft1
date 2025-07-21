@@ -29,34 +29,69 @@ const QuestionController = {
     return question.get({ plain: true })
   },
 
-  // Create a new question with options
+  // Create a new question with options - UPDATED
   create: async data => {
     const t = await sequelize.transaction()
     try {
-      const question = await Question.create(
-        {
-          text: data.text,
-          type: data.type,
-          category_id: data.category_id,
-        },
-        { transaction: t }
-      )
+      console.log('QuestionController: Creando pregunta con datos:', data)
+      
+      // Determinar la categoría a usar (siempre buscar por nombre)
+      const categoryName = data.category_name || 'General'
+      console.log('QuestionController: Nombre de categoría a usar:', categoryName)
 
-      for (const opt of data.options) {
-        await Option.create(
-          {
-            text: opt.text,
-            is_correct: opt.is_correct,
-            question_id: question.question_id,
-          },
-          { transaction: t }
-        )
+      // Buscar o crear la categoría
+      let category = await Category.findOne({
+        where: { name: categoryName },
+        transaction: t,
+      })
+
+      if (!category) {
+        console.log('QuestionController: Creando nueva categoría:', categoryName)
+        category = await Category.create({ name: categoryName }, { transaction: t })
+        console.log('QuestionController: Categoría creada:', category.get({ plain: true }))
+      } else {
+        console.log('QuestionController: Categoría encontrada:', category.get({ plain: true }))
+      }
+
+      console.log('QuestionController: categoryId final:', category.category_id)
+
+      const questionData = {
+        text: data.text,
+        type: data.type,
+        category_id: category.category_id, // Usar la categoría encontrada/creada
+        source: data.source || 'manual',
+      }
+
+      console.log('QuestionController: Creando pregunta con datos:', questionData)
+
+      const question = await Question.create(questionData, { transaction: t })
+
+      console.log('QuestionController: Pregunta creada:', question.get({ plain: true }))
+
+      // Solo crear opciones si se proporcionan
+      if (data.options && Array.isArray(data.options)) {
+        console.log('QuestionController: Creando opciones:', data.options.length)
+        for (const opt of data.options) {
+          await Option.create(
+            {
+              text: opt.text,
+              is_correct: opt.is_correct,
+              question_id: question.question_id,
+            },
+            { transaction: t }
+          )
+        }
       }
 
       await t.commit()
-      return question
+      console.log('QuestionController: Transacción confirmada')
+      
+      // Retornar la pregunta completa con opciones y categoría
+      const createdQuestion = await QuestionController.getById(question.question_id)
+      return createdQuestion
     } catch (err) {
       await t.rollback()
+      console.error('QuestionController: Error creando pregunta:', err)
       throw err
     }
   },
@@ -129,20 +164,20 @@ const QuestionController = {
     // Build where clause for categories
     if (categoryIds && categoryIds.length > 0) {
       whereClause.category_id = {
-        [Op.in]: categoryIds
+        [Op.in]: categoryIds,
       }
       console.log('Added category filter:', whereClause.category_id)
     }
 
     // Build search conditions
     let searchConditions = []
-    
+
     if (searchTerm && searchTerm.trim()) {
       searchConditions = [
         // Search in question text
         { text: { [Op.iLike]: `%${searchTerm.trim()}%` } },
         // Search in category name
-        { '$category.name$': { [Op.iLike]: `%${searchTerm.trim()}%` } }
+        { '$category.name$': { [Op.iLike]: `%${searchTerm.trim()}%` } },
       ]
       console.log('Added search conditions for term:', searchTerm.trim())
     }
@@ -152,15 +187,12 @@ const QuestionController = {
       if (Object.keys(whereClause).length > 0) {
         // If we have category filter, combine with AND
         whereClause = {
-          [Op.and]: [
-            whereClause,
-            { [Op.or]: searchConditions }
-          ]
+          [Op.and]: [whereClause, { [Op.or]: searchConditions }],
         }
       } else {
         // If no category filter, just use search conditions
         whereClause = {
-          [Op.or]: searchConditions
+          [Op.or]: searchConditions,
         }
       }
     }
@@ -173,7 +205,7 @@ const QuestionController = {
         { model: Option, as: 'options' },
         { model: Category, as: 'category' },
       ],
-      order: [['question_id', 'DESC']] // Most recent first
+      order: [['question_id', 'DESC']], // Most recent first
     })
 
     console.log(`Found ${questions.length} questions`)
