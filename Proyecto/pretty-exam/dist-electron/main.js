@@ -92,7 +92,14 @@ const Question = sequelize.define(
     text: { type: DataTypes.TEXT, allowNull: false },
     type: { type: DataTypes.STRING, allowNull: false },
     category_id: DataTypes.INTEGER,
-    source: { type: DataTypes.STRING, defaultValue: "manual", allowNull: true },
+    source: {
+      type: DataTypes.STRING,
+      defaultValue: "manual",
+      allowNull: true,
+      validate: {
+        isIn: [["manual", "generated"]]
+      }
+    },
     created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, allowNull: false },
     updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, allowNull: false }
   },
@@ -199,21 +206,25 @@ const QuestionController = {
   create: async (data) => {
     const t = await sequelize.transaction();
     try {
-      console.log("QuestionController: Creando pregunta con datos:", data);
-      const categoryName = data.category_name || "General";
-      console.log("QuestionController: Nombre de categoría a usar:", categoryName);
-      let category = await Category.findOne({
-        where: { name: categoryName },
-        transaction: t
-      });
-      if (!category) {
-        console.log("QuestionController: Creando nueva categoría:", categoryName);
-        category = await Category.create({ name: categoryName }, { transaction: t });
-        console.log("QuestionController: Categoría creada:", category.get({ plain: true }));
+      let category = null;
+      if (data.category_id && typeof data.category_id === "number") {
+        category = await Category.findByPk(data.category_id, { transaction: t });
+        if (!category) {
+          category = await Category.findOne({
+            where: { name: "General" },
+            transaction: t
+          });
+        }
       } else {
-        console.log("QuestionController: Categoría encontrada:", category.get({ plain: true }));
+        const categoryName = data.category_name || "General";
+        category = await Category.findOne({
+          where: { name: categoryName },
+          transaction: t
+        });
+        if (!category) {
+          category = await Category.create({ name: categoryName }, { transaction: t });
+        }
       }
-      console.log("QuestionController: categoryId final:", category.category_id);
       const questionData = {
         text: data.text,
         type: data.type,
@@ -221,11 +232,8 @@ const QuestionController = {
         // Usar la categoría encontrada/creada
         source: data.source || "manual"
       };
-      console.log("QuestionController: Creando pregunta con datos:", questionData);
       const question = await Question.create(questionData, { transaction: t });
-      console.log("QuestionController: Pregunta creada:", question.get({ plain: true }));
       if (data.options && Array.isArray(data.options)) {
-        console.log("QuestionController: Creando opciones:", data.options.length);
         for (const opt of data.options) {
           await Option.create(
             {
@@ -238,7 +246,6 @@ const QuestionController = {
         }
       }
       await t.commit();
-      console.log("QuestionController: Transacción confirmada");
       const createdQuestion = await QuestionController.getById(question.question_id);
       return createdQuestion;
     } catch (err) {
@@ -755,151 +762,240 @@ const ResultController = {
     return await Result.destroy({ where: { result_id: id } });
   }
 };
-async function loadPdfJs() {
-  try {
-    console.log("pdfUtils: Cargando PDF.js (legacy mjs)...");
-    const pdfjsLib = await import("./pdf-D3NweMaE.js");
-    console.log("pdfUtils: PDF.js legacy mjs cargado exitosamente");
-    if (pdfjsLib.GlobalWorkerOptions) {
-      try {
-        const workerPath = "pdfjs-dist/legacy/build/pdf.worker.mjs";
-        pdfjsLib.GlobalWorkerOptions.workerSrc = workerPath;
-        console.log("pdfUtils: Worker configurado:", workerPath);
-      } catch (workerError) {
-        console.log("pdfUtils: No se pudo configurar worker, usando modo compatibilidad");
-        pdfjsLib.GlobalWorkerOptions.workerSrc = false;
-      }
-    }
-    console.log("pdfUtils: PDF.js configurado exitosamente");
-    return pdfjsLib;
-  } catch (error) {
-    console.error("pdfUtils: Error crítico al cargar PDF.js:", error);
-    throw new Error(`Could not load PDF.js library: ${error.message}`);
-  }
+function boldMarkdownToHtml(text) {
+  if (!text) return text;
+  return text.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>");
 }
-async function readPdfText(pdfBuffer) {
-  try {
-    console.log("pdfUtils: Iniciando lectura de PDF, buffer size:", pdfBuffer.byteLength);
-    const pdfjsLib = await loadPdfJs();
-    console.log("pdfUtils: PDF.js cargado correctamente");
-    const pdfData = pdfBuffer instanceof Uint8Array ? pdfBuffer : new Uint8Array(pdfBuffer);
-    console.log("pdfUtils: Creando loading task...");
-    const loadingTask = pdfjsLib.getDocument({
-      data: pdfData,
-      verbosity: 0,
-      disableFontFace: true,
-      disableStream: true,
-      disableRange: true
-    });
-    console.log("pdfUtils: Esperando promesa de PDF...");
-    const pdf = await loadingTask.promise;
-    console.log("pdfUtils: PDF cargado exitosamente, páginas:", pdf.numPages);
-    let fullText = "";
-    let processedPages = 0;
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      try {
-        console.log(`pdfUtils: Procesando página ${pageNum}/${pdf.numPages}`);
-        const page = await pdf.getPage(pageNum);
-        console.log(`pdfUtils: Página ${pageNum} obtenida, extrayendo texto...`);
-        const textContent = await page.getTextContent();
-        console.log(
-          `pdfUtils: Texto de página ${pageNum} extraído, items:`,
-          textContent.items.length
-        );
-        const pageText = textContent.items.map((item) => item && item.str ? item.str : "").filter((str) => str.trim().length > 0).join(" ");
-        if (pageText.trim().length > 0) {
-          fullText += pageText + "\n\n";
-          processedPages++;
-        }
-        console.log(`pdfUtils: Página ${pageNum} procesada, caracteres: ${pageText.length}`);
-      } catch (pageError) {
-        console.error(`pdfUtils: Error procesando página ${pageNum}:`, pageError.message);
-      }
-    }
-    const result = {
-      text: fullText.trim(),
-      pages: pdf.numPages
-    };
-    console.log("pdfUtils: Extracción completada");
-    console.log("pdfUtils: Páginas procesadas exitosamente:", processedPages, "de", pdf.numPages);
-    console.log("pdfUtils: Total caracteres:", result.text.length);
-    if (result.text.length === 0) {
-      throw new Error(
-        "No se pudo extraer texto del PDF. El archivo puede contener solo imágenes o estar protegido."
-      );
-    }
-    if (processedPages === 0) {
-      throw new Error("No se pudo procesar ninguna página del PDF.");
-    }
-    return result;
-  } catch (error) {
-    console.error("pdfUtils: Error crítico extracting text from PDF:", error);
-    console.error("pdfUtils: Stack trace:", error.stack);
-    let errorMessage = error.message;
-    if (error.message.includes("Could not load PDF.js")) {
-      errorMessage = "No se pudo cargar la librería PDF.js. Verifica la instalación.";
-    } else if (error.message.includes("Invalid PDF")) {
-      errorMessage = "El archivo PDF está corrupto o no es válido.";
-    } else if (error.message.includes("Timeout")) {
-      errorMessage = "El PDF es demasiado complejo o grande para procesar.";
-    }
-    throw new Error(errorMessage);
-  }
-}
-{
-  console.log("Gemini API key is not set.");
-}
+const apiKey = "AIzaSyA6XbOUVChgVYbU7TyeC9waui2oX98aX20";
 const AIController = {
-  // Método para extraer texto del PDF
-  extractPdfText: async (pdfBuffer) => {
-    try {
-      console.log("AIController: Iniciando extracción de PDF, buffer size:", pdfBuffer.byteLength);
-      if (!pdfBuffer || pdfBuffer.byteLength === 0) {
-        throw new Error("Buffer de PDF vacío o inválido");
-      }
-      const header = new Uint8Array(pdfBuffer.slice(0, 4));
-      const headerString = String.fromCharCode(...header);
-      if (!headerString.startsWith("%PDF")) {
-        throw new Error("El archivo no parece ser un PDF válido");
-      }
-      console.log("AIController: PDF header válido:", headerString);
-      const result = await readPdfText(pdfBuffer);
-      console.log("AIController: Extracción exitosa");
-      console.log("AIController: Páginas:", result.pages);
-      console.log("AIController: Caracteres:", result.text.length);
-      console.log("AIController: Primeros 100 caracteres:", result.text.substring(0, 100));
-      return result;
-    } catch (error) {
-      console.error("AIController: Error completo:", error);
-      console.error("AIController: Error stack:", error.stack);
-      let errorMessage = "Error extracting text from PDF";
-      if (error.message.includes("Could not load PDF.js")) {
-        errorMessage = "No se pudo cargar la librería PDF.js";
-      } else if (error.message.includes("Invalid PDF")) {
-        errorMessage = "El archivo PDF está corrupto o no es válido";
-      } else if (error.message.includes("Password required")) {
-        errorMessage = "El PDF está protegido por contraseña";
-      } else {
-        errorMessage = error.message;
-      }
-      throw new Error(errorMessage);
-    }
-  },
   // Método para generar preguntas usando Gemini AI
   generateQuestions: async (config) => {
+    var _a, _b, _c, _d, _e, _f;
+    try {
+      console.log("AIController: Iniciando generación de preguntas con Gemini");
+      console.log("AIController: Configuración:", config);
+      const prompt = `
+Eres un profesor experto creando preguntas de examen. Analiza el siguiente texto y genera exactamente ${config.multipleChoice} preguntas de opción múltiple y ${config.trueFalse} preguntas de verdadero/falso.
+
+TEXTO A ANALIZAR:
+"${config.text}"
+
+INSTRUCCIONES:
+1. Lee y comprende completamente el texto
+2. Identifica la materia/categoría principal del contenido (ej: Biología, Historia, Matemáticas, etc.)
+3. Genera preguntas que evalúen comprensión, análisis y conocimiento del texto
+4. Para preguntas de opción múltiple: incluye 2 a 4 opciones, solo una correcta
+5. Para preguntas verdadero/falso: asegúrate que sean claras y verificables
+
+FORMATO DE RESPUESTA (JSON estricto):
+{
+  "questions": [
     {
-      throw new Error("Gemini API key is not set.");
+      "type": "multiple_choice",
+      "text": "Pregunta clara y específica sobre el contenido",
+      "category": "Nombre de la materia/categoría identificada",
+      "options": [
+        {"text": "Opción A (correcta)", "is_correct": true},
+        {"text": "Opción B (incorrecta)", "is_correct": false},
+        {"text": "Opción C (incorrecta)", "is_correct": false},
+        {"text": "Opción D (incorrecta)", "is_correct": false}
+      ],
+      "correctAnswer": 0,
+      "explanation": "Breve explicación de por qué esta respuesta es correcta"
+    },
+    {
+      "type": "true_false",
+      "text": "Afirmación clara que se puede evaluar como verdadera o falsa",
+      "category": "Nombre de la materia/categoría identificada",
+      "correctAnswer": true,
+      "explanation": "Breve explicación de por qué esta afirmación es verdadera o falsa"
+    }
+  ]
+}
+
+IMPORTANTE:
+- Responde SOLO con el JSON, sin texto adicional
+- Todas las preguntas deben estar basadas en el contenido del texto
+- La categoría debe ser consistente y apropiada para el contenido
+- Las preguntas deben ser educativas y de calidad académica
+- Asegúrate de generar exactamente ${config.multipleChoice} preguntas de opción múltiple y ${config.trueFalse} preguntas de verdadero/falso
+      `.trim();
+      console.log("AIController: Enviando prompt a Gemini API...");
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const body = {
+        contents: [{ parts: [{ text: prompt }] }]
+      };
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.statusText}`);
+      }
+      const data = await response.json();
+      console.log("AIController: Respuesta recibida de Gemini API");
+      const generatedText = (_f = (_e = (_d = (_c = (_b = (_a = data == null ? void 0 : data.candidates) == null ? void 0 : _a[0]) == null ? void 0 : _b.content) == null ? void 0 : _c.parts) == null ? void 0 : _d[0]) == null ? void 0 : _e.text) == null ? void 0 : _f.trim();
+      if (!generatedText) {
+        throw new Error("No se pudo generar el contenido desde la API");
+      }
+      console.log("AIController: Texto generado:", generatedText.substring(0, 200) + "...");
+      try {
+        const cleanedText = generatedText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        const parsedQuestions = JSON.parse(cleanedText);
+        if (!parsedQuestions.questions || !Array.isArray(parsedQuestions.questions)) {
+          throw new Error("El formato de respuesta de la API no es válido");
+        }
+        console.log(
+          "AIController: Preguntas generadas exitosamente:",
+          parsedQuestions.questions.length
+        );
+        return parsedQuestions;
+      } catch (parseError) {
+        console.error("AIController: Error parseando JSON:", parseError);
+        console.error("AIController: Texto a parsear:", generatedText);
+        throw new Error("Error al procesar las preguntas generadas por la API");
+      }
+    } catch (error) {
+      console.error("AIController: Error generando preguntas:", error);
+      throw new Error(`Error generating questions: ${error.message}`);
     }
   },
   explainQuestion: async (questionId, optionSelectedId) => {
-    {
-      throw new Error("Gemini API key is not set.");
+    var _a, _b, _c, _d, _e, _f;
+    let option = {};
+    let prompt = "";
+    if (optionSelectedId === void 0 || optionSelectedId === null) {
+      option.text = "Pregunta no respondida";
+      const question = await QuestionController.getById(questionId);
+      if (!question) throw new Error("Question not found");
+      const correctOption = question.options.find((opt) => opt.is_correct);
+      prompt = `
+        No saludes, no te presentes, no digas que eres una IA.
+        Actúa como un profesor experto en el tema.
+        El estudiante no respondió la siguiente pregunta de un examen tipo test.
+        No uses latex, escribe símbolos matemáticos de manera simple, usa texto plano para fórmulas.
+
+        Pregunta: ${question.text}
+        Opciones: 
+        ${question.options.map((opt, idx) => `  ${String.fromCharCode(65 + idx)}. ${opt.text}`).join("\n")}
+        Respuesta correcta: ${correctOption ? correctOption.text : "No disponible"}
+
+        Explica de manera clara y sencilla por qué esta es la respuesta correcta para que el estudiante comprenda el razonamiento.
+        También explica por qué las demás respuestas no son correctas.
+        Responde en español, de forma muy breve y didáctica.
+      `;
+    } else {
+      option = await OptionController.getById(optionSelectedId);
+      const question = await QuestionController.getById(questionId);
+      if (!question || !option) throw new Error("Question or option not found");
+      prompt = `
+        No saludes, no te presentes, no digas que eres una IA.
+        Actúa como un profesor experto en el tema.
+        No uses latex, escribe símbolos matemáticos de manera simple, usa texto plano para fórmulas.
+        Opciones: 
+        ${question.options.map((opt, idx) => `  ${String.fromCharCode(65 + idx)}. ${opt.text}`).join("\n")}
+        Respuesta seleccionada: ${option.text}
+
+        Explica si la respuesta es correcta o incorrecta, y justifica la explicación para que el estudiante comprenda el razonamiento.
+        También explica por qué las demás respuestas no son correctas.
+        Responde en español, de forma muy breve y didáctica.
+      `;
+    }
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const body = {
+      contents: [
+        {
+          parts: [{ text: prompt }]
+        }
+      ]
+    };
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.statusText}`);
+      }
+      const data = await response.json();
+      let text = ((_f = (_e = (_d = (_c = (_b = (_a = data == null ? void 0 : data.candidates) == null ? void 0 : _a[0]) == null ? void 0 : _b.content) == null ? void 0 : _c.parts) == null ? void 0 : _d[0]) == null ? void 0 : _e.text) == null ? void 0 : _f.trim()) || "No se pudo obtener explicación de la IA.";
+      text = boldMarkdownToHtml(text);
+      return text;
+    } catch (err) {
+      return `Error al comunicarse con Gemini: ${err.message}`;
     }
   },
   // Método para retroalimentación del examen
   feedbackExam: async (examId, resultId) => {
-    {
-      throw new Error("Gemini API key is not set.");
+    var _a, _b, _c, _d, _e, _f;
+    const exam = await ExamController.getById(examId);
+    const result = await ResultController.getById(resultId);
+    if (!exam || !result) throw new Error("Exam or result not found");
+    const userAnswers = Array.isArray(result.userAnswers) ? result.userAnswers : [];
+    const correctCount = result.correct_answers;
+    const incorrectCount = result.incorrect_answers;
+    let resumen = "";
+    const questions = Array.isArray(exam.questions) ? exam.questions : [];
+    questions.forEach((q, idx) => {
+      var _a2;
+      const options = Array.isArray(q.options) ? q.options : [];
+      const userAnswer = userAnswers.find((ua) => ua.question_id === q.question_id);
+      const correctOpt = options.find((opt) => opt.is_correct);
+      resumen += `Pregunta ${idx + 1}: ${q.text || "Sin texto"}
+`;
+      resumen += `Opciones: ${options.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt.text || "Sin texto"}${opt.is_correct ? " (correcta)" : ""}`).join(" ")}
+`;
+      const opcionEscogida = userAnswer ? ((_a2 = options.find((opt) => opt.option_id === userAnswer.option_id)) == null ? void 0 : _a2.text) || "Sin texto" : "No respondida";
+      resumen += `Opción escogida: ${opcionEscogida}
+`;
+      resumen += `Respuesta correcta: ${correctOpt ? correctOpt.text || "Sin texto" : "No disponible"}
+
+`;
+    });
+    const prompt = `No saludes, no te presentes.
+      no digas que eres una IA.
+      Actúa como un profesor experto en el tema y en dar retroalimentación de exámenes.
+      
+
+Resumen del desempeño:
+- Respuestas correctas: ${correctCount}
+- Respuestas incorrectas: ${incorrectCount}
+
+${resumen}
+
+      Por favor, da una retroalimentación breve y didáctica sobre el desempeño general del estudiante en este examen, sin explicar cada pregunta.
+      Indica en qué aspectos puede mejorar y qué cosas hizo bien.`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const body = {
+      contents: [
+        {
+          parts: [{ text: prompt }]
+        }
+      ]
+    };
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.statusText}`);
+      }
+      const data = await response.json();
+      let text = ((_f = (_e = (_d = (_c = (_b = (_a = data == null ? void 0 : data.candidates) == null ? void 0 : _a[0]) == null ? void 0 : _b.content) == null ? void 0 : _c.parts) == null ? void 0 : _d[0]) == null ? void 0 : _e.text) == null ? void 0 : _f.trim()) || "No se pudo obtener retroalimentación de la IA.";
+      text = boldMarkdownToHtml(text);
+      return text;
+    } catch (err) {
+      return `Error al comunicarse con Gemini: ${err.message}`;
     }
   }
 };

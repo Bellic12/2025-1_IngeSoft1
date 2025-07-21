@@ -31,27 +31,31 @@ const QuestionController = {
   create: async data => {
     const t = await sequelize.transaction()
     try {
-      console.log('QuestionController: Creando pregunta con datos:', data)
-      
-      // Determinar la categoría a usar (siempre buscar por nombre)
-      const categoryName = data.category_name || 'General'
-      console.log('QuestionController: Nombre de categoría a usar:', categoryName)
+      let category = null
 
-      // Buscar o crear la categoría
-      let category = await Category.findOne({
-        where: { name: categoryName },
-        transaction: t,
-      })
-
-      if (!category) {
-        console.log('QuestionController: Creando nueva categoría:', categoryName)
-        category = await Category.create({ name: categoryName }, { transaction: t })
-        console.log('QuestionController: Categoría creada:', category.get({ plain: true }))
+      // Si se proporciona category_id, usarlo directamente
+      if (data.category_id && typeof data.category_id === 'number') {
+        category = await Category.findByPk(data.category_id, { transaction: t })
+        
+        if (!category) {
+          category = await Category.findOne({
+            where: { name: 'General' },
+            transaction: t,
+          })
+        }
       } else {
-        console.log('QuestionController: Categoría encontrada:', category.get({ plain: true }))
-      }
+        // Si no se proporciona category_id, buscar por nombre
+        const categoryName = data.category_name || 'General'
 
-      console.log('QuestionController: categoryId final:', category.category_id)
+        category = await Category.findOne({
+          where: { name: categoryName },
+          transaction: t,
+        })
+
+        if (!category) {
+          category = await Category.create({ name: categoryName }, { transaction: t })
+        }
+      }
 
       const questionData = {
         text: data.text,
@@ -60,15 +64,10 @@ const QuestionController = {
         source: data.source || 'manual',
       }
 
-      console.log('QuestionController: Creando pregunta con datos:', questionData)
-
       const question = await Question.create(questionData, { transaction: t })
-
-      console.log('QuestionController: Pregunta creada:', question.get({ plain: true }))
 
       // Solo crear opciones si se proporcionan
       if (data.options && Array.isArray(data.options)) {
-        console.log('QuestionController: Creando opciones:', data.options.length)
         for (const opt of data.options) {
           await Option.create(
             {
@@ -82,7 +81,6 @@ const QuestionController = {
       }
 
       await t.commit()
-      console.log('QuestionController: Transacción confirmada')
       
       // Retornar la pregunta completa con opciones y categoría
       const createdQuestion = await QuestionController.getById(question.question_id)

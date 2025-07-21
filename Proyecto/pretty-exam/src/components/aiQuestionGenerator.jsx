@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { useState, useRef } from "react"
+import { useState, useRef } from 'react'
 import {
   Upload,
   FileText,
@@ -18,31 +18,21 @@ import {
   ChevronLeft,
   Brain,
   Sparkles,
-  Edit,
-} from "lucide-react"
+  CheckCircle,
+} from 'lucide-react'
+import pdfToText from 'react-pdftotext'
+import EditAIQuestion from './forms/EditAIQuestion'
+import QuestionFactory from '../factories/QuestionFactory'
 
 const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
-  const [currentStep, setCurrentStep] = useState(2) // Saltamos directo al paso 2
+  const [currentStep, setCurrentStep] = useState(1)
   const [pdfFile, setPdfFile] = useState(null)
-  const [extractedText, setExtractedText] = useState("")
+  const [extractedText, setExtractedText] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
-  const [pdfError, setPdfError] = useState("")
+  const [pdfError, setPdfError] = useState('')
   const [pdfPages, setPdfPages] = useState(0)
-  
-  // Texto de prueba para testing de la API
-  const testText = `
-    La fotosíntesis es el proceso biológico fundamental mediante el cual las plantas, algas y algunas bacterias convierten la energía lumínica en energía química. Este proceso ocurre principalmente en los cloroplastos de las células vegetales, específicamente en una estructura llamada tilacoides donde se encuentra la clorofila.
+  const [wordLimitError, setWordLimitError] = useState('')
 
-    El proceso de fotosíntesis se puede dividir en dos fases principales: las reacciones lumínicas (fase fotoquímica) y las reacciones oscuras o ciclo de Calvin (fase bioquímica).
-
-    En las reacciones lumínicas, la luz solar es capturada por la clorofila y otros pigmentos fotosintéticos. Esta energía se utiliza para dividir las moléculas de agua (H2O) en hidrógeno y oxígeno. El oxígeno se libera como subproducto hacia la atmósfera, mientras que el hidrógeno se combina con el dióxido de carbono (CO2) del aire para formar glucosa.
-
-    La ecuación general de la fotosíntesis es: 6CO2 + 6H2O + energía lumínica → C6H12O6 + 6O2
-
-    Este proceso es esencial para la vida en la Tierra, ya que produce el oxígeno que respiramos y forma la base de la cadena alimentaria. Sin la fotosíntesis, no existiría vida como la conocemos.
-
-    Los factores que afectan la fotosíntesis incluyen la intensidad de la luz, la temperatura, la concentración de CO2 y la disponibilidad de agua. Las plantas han desarrollado diferentes estrategias para optimizar este proceso según su ambiente.
-  `
   const [questionConfig, setQuestionConfig] = useState({
     multipleChoice: 5,
     trueFalse: 3,
@@ -51,165 +41,65 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
   const [selectedQuestions, setSelectedQuestions] = useState([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [editingQuestion, setEditingQuestion] = useState(null)
-  const [showEditModal, setShowEditModal] = useState(false)
   const fileInputRef = useRef(null)
 
   const steps = [
-    { id: 1, title: "Subir PDF", icon: Upload },
-    { id: 2, title: "Configurar", icon: Settings },
-    { id: 3, title: "Generar", icon: Wand2 },
-    { id: 4, title: "Editar", icon: Edit3 },
-    { id: 5, title: "Guardar", icon: Save },
+    { id: 1, title: 'Subir PDF', icon: Upload },
+    { id: 2, title: 'Configurar', icon: Settings },
+    { id: 3, title: 'Generar', icon: Wand2 },
+    { id: 4, title: 'Editar', icon: Edit3 },
+    { id: 5, title: 'Guardar', icon: Save },
   ]
-
-  // Categorías que la IA puede asignar
-  const aiCategories = [
-    "Matemáticas",
-    "Historia",
-    "Ciencias",
-    "Literatura",
-    "Geografía",
-    "Física",
-    "Química",
-    "Biología",
-  ]
-
-  // Extracción real de texto del PDF con validaciones
-  const handleFileUpload = async event => {
-    const file = event.target.files[0]
-    if (file && file.type === 'application/pdf') {
-      // Validar tamaño del archivo (máximo 10 MB)
-      const maxSize = 10 * 1024 * 1024 // 10 MB en bytes
-      if (file.size > maxSize) {
-        setPdfError('El archivo PDF es demasiado grande. El tamaño máximo permitido es 10 MB.')
-        return
-      }
-
-      setPdfFile(file)
-      setPdfError('')
-      setIsProcessing(true)
-
-      try {
-        // Verificar si window.aiAPI existe
-        if (!window.aiAPI) {
-          throw new Error('window.aiAPI no está disponible. Verifique que la aplicación esté ejecutándose en Electron.')
-        }
-        
-        if (!window.aiAPI.extractPdfText) {
-          throw new Error('Método extractPdfText no disponible en window.aiAPI.')
-        }
-
-        console.log('Iniciando procesamiento del PDF:', file.name)
-        console.log('window.aiAPI disponible:', !!window.aiAPI)
-        
-        // Convertir archivo a ArrayBuffer
-        const buffer = await file.arrayBuffer()
-        console.log('Buffer creado, tamaño:', buffer.byteLength, 'bytes')
-
-        // Llamar al IPC handler para extraer texto y obtener información del PDF
-        console.log('Llamando a extractPdfText...')
-        const result = await window.aiAPI.extractPdfText(buffer)
-        console.log('Resultado recibido:', result)
-        
-        // Verificar que el resultado tenga la estructura esperada
-        if (!result || typeof result.text !== 'string' || typeof result.pages !== 'number') {
-          throw new Error('Formato de respuesta inválido del servidor')
-        }
-
-        // Validar número de páginas (máximo 50 páginas)
-        if (result.pages > 50) {
-          setPdfError('El archivo PDF tiene demasiadas páginas. El máximo permitido es 50 páginas.')
-          setPdfFile(null)
-          return
-        }
-
-        // Validar que se extrajo texto
-        if (!result.text || result.text.trim().length === 0) {
-          setPdfError('No se pudo extraer texto del PDF. El archivo puede estar vacío o ser solo imágenes.')
-          setPdfFile(null)
-          return
-        }
-
-        setPdfPages(result.pages)
-        setExtractedText(result.text)
-        console.log('Procesamiento exitoso. Páginas:', result.pages, 'Caracteres:', result.text.length)
-        
-      } catch (error) {
-        console.error('Error detallado al procesar el PDF:', error)
-        
-        // Mensajes de error más específicos
-        let errorMessage = 'Error al procesar el PDF. '
-        
-        if (error.message.includes('API de IA no disponible')) {
-          errorMessage += 'La aplicación no está completamente cargada. Intenta recargar la página.'
-        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-          errorMessage += 'Error de conexión. Verifica tu conexión a internet.'
-        } else if (error.message.includes('PDF.js') || error.message.includes('Invalid PDF')) {
-          errorMessage += 'El archivo PDF está corrupto o no es válido.'
-        } else if (error.message.includes('Formato de respuesta inválido')) {
-          errorMessage += 'Error interno del servidor al procesar el PDF.'
-        } else {
-          errorMessage += 'Por favor, intenta con otro archivo o contacta al administrador.'
-        }
-        
-        setPdfError(errorMessage)
-        setExtractedText('')
-        setPdfFile(null)
-      } finally {
-        setIsProcessing(false)
-      }
-    } else if (file) {
-      setPdfError('Por favor selecciona un archivo PDF válido.')
-    }
-  }
 
   // Generar preguntas usando la API de Gemini con el texto de prueba
   const generateQuestions = async () => {
     setIsGenerating(true)
-    
+
     try {
       console.log('Iniciando generación de preguntas con IA...')
-      
-      // Verificar que la API esté disponible
-      if (!window.aiAPI || !window.aiAPI.generateQuestions) {
-        throw new Error('API de IA no disponible')
-      }
-      
+
       // Preparar la configuración
       const config = {
-        text: testText, // Usar el texto de prueba
+        text: extractedText, // Usar el texto extraído del PDF
         multipleChoice: questionConfig.multipleChoice,
         trueFalse: questionConfig.trueFalse,
       }
-      
+
       console.log('Configuración enviada:', config)
-      
+
       // Llamar a la API para generar preguntas
       const result = await window.aiAPI.generateQuestions(config)
       console.log('Respuesta de la API:', result)
-      
+
       if (!result || !result.questions || !Array.isArray(result.questions)) {
         throw new Error('Respuesta inválida de la API de IA')
       }
-      
+
       // Procesar las preguntas generadas
-      const processedQuestions = result.questions.map((q, index) => ({
-        id: `ai_${index}`,
-        type: q.type,
-        text: q.text,
-        options: q.options || [], // Para preguntas de opción múltiple
-        correctAnswer: q.correctAnswer,
-        category: q.category || 'General', // Categoría detectada por la IA
-      }))
-      
+      const processedQuestions = result.questions.map((q, index) => {
+        // Generar un category_id único por nombre de categoría (simple hash)
+        const catName = q.category || 'General'
+        let catId = 0
+        for (let i = 0; i < catName.length; i++) {
+          catId += catName.charCodeAt(i) * (i + 1)
+        }
+        return {
+          id: `ai_${index}`,
+          type: q.type,
+          text: q.text,
+          options: q.options || [],
+          correctAnswer: q.correctAnswer,
+          category: catName,
+          category_id: catId,
+        }
+      })
+
       setGeneratedQuestions(processedQuestions)
-      setSelectedQuestions(processedQuestions.map((q) => q.id))
+      setSelectedQuestions(processedQuestions.map(q => q.id))
       setCurrentStep(4) // Ir directo al paso de edición
-      
     } catch (error) {
       console.error('Error generando preguntas:', error)
-      
+
       let errorMessage = 'Error al generar preguntas con IA. '
       if (error.message.includes('API de IA no disponible')) {
         errorMessage += 'La funcionalidad de IA no está disponible en este momento.'
@@ -218,7 +108,7 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
       } else {
         errorMessage += 'Por favor, intenta nuevamente.'
       }
-      
+
       // Mostrar error en la interfaz (puedes agregar un estado de error si no existe)
       alert(errorMessage)
     } finally {
@@ -226,126 +116,108 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
     }
   }
 
-  // Añadir nueva opción
-  const addOption = (questionId) => {
-    setEditingQuestion((prev) => ({
-      ...prev,
-      options: [...prev.options, "Nueva opción"],
-    }))
-  }
-
-  // Eliminar opción
-  const removeOption = (questionId, optionIndex) => {
-    if (editingQuestion.options.length <= 2) {
-      return
-    }
-    setEditingQuestion((prev) => ({
-      ...prev,
-      options: prev.options.filter((_, idx) => idx !== optionIndex),
-      correctAnswer:
-        prev.correctAnswer === optionIndex
-          ? 0
-          : prev.correctAnswer > optionIndex
-            ? prev.correctAnswer - 1
-            : prev.correctAnswer,
-    }))
-  }
-
   // Eliminar pregunta
-  const removeQuestion = (questionId) => {
-    setGeneratedQuestions((prev) => prev.filter((q) => q.id !== questionId))
-    setSelectedQuestions((prev) => prev.filter((id) => id !== questionId))
+  const removeQuestion = questionId => {
+    setGeneratedQuestions(prev => prev.filter(q => q.id !== questionId))
+    setSelectedQuestions(prev => prev.filter(id => id !== questionId))
   }
 
   // Seleccionar/deseleccionar pregunta
-  const toggleQuestionSelection = (questionId) => {
-    setSelectedQuestions((prev) =>
-      prev.includes(questionId) ? prev.filter((id) => id !== questionId) : [...prev, questionId],
+  const toggleQuestionSelection = questionId => {
+    setSelectedQuestions(prev =>
+      prev.includes(questionId) ? prev.filter(id => id !== questionId) : [...prev, questionId]
     )
-  }
-
-  // Abrir modal de edición
-  const openEditModal = (question) => {
-    setEditingQuestion({ ...question })
-    setShowEditModal(true)
-  }
-
-  // Guardar cambios de edición
-  const saveEditedQuestion = () => {
-    if (editingQuestion) {
-      setGeneratedQuestions((prev) => prev.map((q) => (q.id === editingQuestion.id ? editingQuestion : q)))
-      setShowEditModal(false)
-      setEditingQuestion(null)
-    }
   }
 
   // Guardar preguntas seleccionadas
   const saveQuestions = async () => {
     setIsSaving(true)
 
-    const questionsToSave = generatedQuestions.filter((q) => selectedQuestions.includes(q.id))
+    const questionsToSave = generatedQuestions.filter(q => selectedQuestions.includes(q.id))
 
     try {
-      // Guardar cada pregunta en la base de datos
       const savedQuestions = []
-      
+
       for (const question of questionsToSave) {
         try {
-          // Preparar datos de la pregunta
-          const questionData = {
-            text: question.text,
-            type: question.type,
-            category_name: question.category || 'General', // Siempre enviar nombre de categoría
-            source: 'ai', // Marcar como generada por IA
-          }
+          let categoryId = null
 
-          // Crear la pregunta
-          const createdQuestion = await window.questionAPI.create(questionData)
-          
-          // Crear opciones para la pregunta
-          if (question.type === 'multiple_choice' && question.options) {
-            for (let i = 0; i < question.options.length; i++) {
-              const optionData = {
-                question_id: createdQuestion.question_id,
-                text: question.options[i].text || question.options[i],
-                is_correct:
-                  question.options[i].is_correct !== undefined
-                    ? question.options[i].is_correct
-                    : i === question.correctAnswer,
+          // Verificar si la pregunta tiene categoría
+          if (question.category && question.category !== 'General') {
+            // Verificar si la categoría ya existe en la base de datos
+            const categoryExists = await window.categoryAPI.nameExists(question.category)
+            
+            if (!categoryExists) {
+              // Crear la categoría si no existe
+              try {
+                const newCategory = await window.categoryAPI.create({ name: question.category })
+                categoryId = newCategory.category_id
+                console.log(`Categoría creada: ${question.category} con ID: ${categoryId}`)
+              } catch (categoryError) {
+                console.error('Error creando categoría:', categoryError)
+                // Si falla, continuar sin categoría
+                categoryId = null
               }
-              await window.optionAPI.create(optionData)
+            } else {
+              // Si la categoría existe, obtener su ID
+              try {
+                const categories = await window.categoryAPI.getAll()
+                const existingCategory = categories.find(c => c.name === question.category)
+                categoryId = existingCategory ? existingCategory.category_id : null
+                console.log(
+                  `Categoría existente encontrada: ${question.category} con ID: ${categoryId}`
+                )
+              } catch (getCategoryError) {
+                console.error('Error obteniendo categorías:', getCategoryError)
+                categoryId = null
+              }
             }
-          } else if (question.type === 'true_false') {
-            // Crear opciones para verdadero/falso
-            await window.optionAPI.create({
-              question_id: createdQuestion.question_id,
-              text: 'Verdadero',
-              is_correct: question.correctAnswer === true,
-            })
-            await window.optionAPI.create({
-              question_id: createdQuestion.question_id,
-              text: 'Falso',
-              is_correct: question.correctAnswer === false,
-            })
           }
 
+          // Crear el objeto de pregunta usando QuestionFactory
+          const questionObj = QuestionFactory.createQuestion(question.type, {
+            text: question.text,
+            category_id: categoryId,
+            source: 'generated',
+            options:
+              question.type === 'true_false'
+                ? [
+                    { text: 'Verdadero', is_correct: question.correctAnswer === true },
+                    { text: 'Falso', is_correct: question.correctAnswer === false },
+                  ]
+                : question.options.map(opt => ({
+                    text: typeof opt === 'object' ? opt.text : opt,
+                    is_correct: typeof opt === 'object' ? opt.is_correct || opt.isCorrect : false,
+                  })),
+          })
+
+          // Validar la pregunta
+          questionObj.validate()
+
+          // Crear la pregunta en la base de datos
+          const createdQuestion = await window.questionAPI.create(questionObj.toAPIFormat())
           savedQuestions.push(createdQuestion)
-          
+          console.log(`Pregunta guardada: ${question.text}`)
         } catch (questionError) {
           console.error('Error guardando pregunta individual:', questionError)
-          // Continuar con las demás preguntas
+          // Continuar con las demás preguntas en caso de error
         }
       }
 
-      console.log('Preguntas guardadas exitosamente:', savedQuestions.length)
-      
+      console.log(
+        `${savedQuestions.length} de ${questionsToSave.length} preguntas guardadas exitosamente`
+      )
+
       // Llamar callback con las preguntas guardadas
-      onQuestionsGenerated(savedQuestions)
+      if (onQuestionsGenerated) {
+        onQuestionsGenerated(savedQuestions)
+      }
+
+      // Cerrar el modal
       handleClose()
-      
     } catch (error) {
-      console.error('Error guardando preguntas:', error)
-      alert('Error al guardar las preguntas en la base de datos. Por favor, intenta nuevamente.')
+      console.error('Error general guardando preguntas:', error)
+      alert('Error al guardar las preguntas. Por favor, intenta nuevamente.')
     } finally {
       setIsSaving(false)
     }
@@ -363,12 +235,10 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
       multipleChoice: 5,
       trueFalse: 3,
     })
-    setShowEditModal(false)
-    setEditingQuestion(null)
     onClose()
   }
 
-  const nextStep = () => {
+  const nextStep = async () => {
     if (currentStep < 5) {
       setCurrentStep(currentStep + 1)
     }
@@ -377,7 +247,36 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
   const prevStep = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1)
+      // No limpiar pdfFile ni extractedText al volver atrás
     }
+  }
+
+  const handleOnChangeFile = async e => {
+    const file = e.target.files[0]
+    if (!file) return
+    setPdfError('')
+    setPdfFile(file)
+    setExtractedText('') // Limpiar texto si se sube PDF
+    setIsProcessing(true)
+    try {
+      const text = await pdfToText(file)
+      const wordCount = text.trim().split(/\s+/).length
+      if (wordCount > 10000) {
+        setWordLimitError(
+          'El PDF tiene más de 10,000 palabras. Por favor, sube un archivo más pequeño.'
+        )
+        setExtractedText('')
+        setPdfFile(null)
+      } else {
+        setExtractedText(text)
+        setPdfPages(file?.numPages || 0)
+        setWordLimitError('')
+      }
+    } catch (error) {
+      console.error('Error extrayendo texto del PDF:', error)
+      setPdfError('Error al procesar el PDF. Asegúrate de que sea un archivo válido.')
+    }
+    setIsProcessing(false)
   }
 
   if (!isOpen) return null
@@ -407,13 +306,16 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
             {/* Progress Steps */}
             <div className="mt-6">
               <ul className="steps steps-horizontal w-full">
-                {steps.map((step) => {
+                {steps.map(step => {
                   const Icon = step.icon
                   const isActive = currentStep === step.id
                   const isCompleted = currentStep > step.id
 
                   return (
-                    <li key={step.id} className={`step ${isCompleted || isActive ? "step-primary" : ""}`}>
+                    <li
+                      key={step.id}
+                      className={`step ${isCompleted || isActive ? 'step-primary' : ''}`}
+                    >
                       <div className="flex items-center gap-2">
                         {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                         <span className="hidden sm:inline">{step.title}</span>
@@ -431,36 +333,82 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
             {currentStep === 1 && (
               <div className="space-y-6">
                 <div className="text-center">
-                  <h3 className="text-2xl font-bold mb-2">Texto de Prueba para IA</h3>
+                  <h3 className="text-2xl font-bold mb-2">Texto para IA</h3>
                   <p className="text-base-content/70">
-                    Usando el siguiente texto para generar preguntas con Gemini AI
+                    Ingresa el texto que deseas usar para generar preguntas, o sube un archivo PDF.
                   </p>
                 </div>
 
                 <div className="max-w-4xl mx-auto">
-                  <div className="bg-base-100 border border-base-300 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-lg font-medium flex items-center gap-2">
-                        <FileText className="w-5 h-5" />
-                        Texto de Estudio - Fotosíntesis
-                      </h4>
-                      <div className="badge badge-success">
-                        {testText.length} caracteres
-                      </div>
+                  <div className="bg-base-100 border border-base-300 rounded-lg p-4 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Texto de estudio</label>
+                      <textarea
+                        className="textarea textarea-bordered w-full min-h-[120px]"
+                        placeholder="Pega aquí el texto para generar preguntas..."
+                        value={extractedText}
+                        onChange={e => {
+                          const value = e.target.value
+                          const wordCount = value.trim().split(/\s+/).length
+                          if (wordCount > 10000) {
+                            setWordLimitError(
+                              'El texto tiene más de 10,000 palabras. Por favor, reduce el contenido.'
+                            )
+                          } else {
+                            setWordLimitError('')
+                            setExtractedText(value)
+                            if (value.length > 0) {
+                              setPdfFile(null)
+                            }
+                          }
+                        }}
+                        disabled={!!pdfFile}
+                      />
                     </div>
-                    <div className="bg-base-200 rounded-lg p-4 max-h-48 overflow-y-auto">
-                      <pre className="text-sm whitespace-pre-wrap font-mono text-base-content/80">
-                        {testText}
-                      </pre>
-                    </div>
-                    <div className="mt-4 p-3 bg-info/10 border border-info/20 rounded-lg">
-                      <div className="flex items-center gap-2 text-info">
-                        <Check className="w-4 h-4" />
-                        <span className="font-medium">Listo para continuar</span>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">O subir PDF</label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-primary"
+                          disabled={extractedText.trim().length > 0 || !!pdfFile}
+                          onClick={() => {
+                            if (fileInputRef.current) {
+                              fileInputRef.current.value = '' // Reset para permitir subir el mismo archivo
+                              fileInputRef.current.click()
+                            }
+                          }}
+                        >
+                          <FileText className="w-4 h-4 mr-2" /> Subir PDF
+                        </button>
+                        {pdfFile && (
+                          <span className="text-info text-sm flex items-center gap-2">
+                            <FileText className="w-4 h-4" />
+                            <span>{pdfFile.name}</span>
+                            <button
+                              className="btn btn-xs btn-ghost text-red-500"
+                              onClick={() => {
+                                setPdfFile(null)
+                                setExtractedText('')
+                              }}
+                            >
+                              <X className="w-4 h-4" /> Quitar
+                            </button>
+                          </span>
+                        )}
                       </div>
-                      <p className="text-sm text-base-content/70 mt-1">
-                        Este texto será usado para generar preguntas inteligentes usando Gemini AI.
-                      </p>
+                      {wordLimitError && (
+                        <div className="mt-2 text-red-500 text-sm">{wordLimitError}</div>
+                      )}
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        ref={fileInputRef}
+                        className="hidden"
+                        onChange={handleOnChangeFile}
+                        disabled={extractedText.trim().length > 0}
+                      />
+                      {pdfError && <div className="mt-2 text-red-500 text-sm">{pdfError}</div>}
                     </div>
                   </div>
                 </div>
@@ -472,7 +420,9 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
               <div className="space-y-6">
                 <div className="text-center">
                   <h3 className="text-2xl font-bold mb-2">Configurar Preguntas</h3>
-                  <p className="text-base-content/70">Especifica qué tipos de preguntas deseas generar</p>
+                  <p className="text-base-content/70">
+                    Especifica qué tipos de preguntas deseas generar
+                  </p>
                 </div>
 
                 <div className="max-w-2xl mx-auto space-y-6">
@@ -487,7 +437,7 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
                         <div className="flex items-center justify-center gap-4">
                           <button
                             onClick={() =>
-                              setQuestionConfig((prev) => ({
+                              setQuestionConfig(prev => ({
                                 ...prev,
                                 multipleChoice: Math.max(0, prev.multipleChoice - 1),
                               }))
@@ -498,12 +448,14 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
                             <Minus className="w-4 h-4" />
                           </button>
                           <div className="text-center">
-                            <div className="text-3xl font-bold text-info">{questionConfig.multipleChoice}</div>
+                            <div className="text-3xl font-bold text-info">
+                              {questionConfig.multipleChoice}
+                            </div>
                             <div className="text-sm text-base-content/70">preguntas</div>
                           </div>
                           <button
                             onClick={() =>
-                              setQuestionConfig((prev) => ({
+                              setQuestionConfig(prev => ({
                                 ...prev,
                                 multipleChoice: prev.multipleChoice + 1,
                               }))
@@ -525,7 +477,7 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
                         <div className="flex items-center justify-center gap-4">
                           <button
                             onClick={() =>
-                              setQuestionConfig((prev) => ({
+                              setQuestionConfig(prev => ({
                                 ...prev,
                                 trueFalse: Math.max(0, prev.trueFalse - 1),
                               }))
@@ -536,12 +488,14 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
                             <Minus className="w-4 h-4" />
                           </button>
                           <div className="text-center">
-                            <div className="text-3xl font-bold text-success">{questionConfig.trueFalse}</div>
+                            <div className="text-3xl font-bold text-success">
+                              {questionConfig.trueFalse}
+                            </div>
                             <div className="text-sm text-base-content/70">preguntas</div>
                           </div>
                           <button
                             onClick={() =>
-                              setQuestionConfig((prev) => ({
+                              setQuestionConfig(prev => ({
                                 ...prev,
                                 trueFalse: prev.trueFalse + 1,
                               }))
@@ -561,9 +515,11 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
                     <div>
                       <h4 className="font-medium">Resumen de configuración</h4>
                       <div className="text-sm">
-                        Se generarán <strong>{questionConfig.multipleChoice + questionConfig.trueFalse}</strong>{" "}
-                        preguntas ({questionConfig.multipleChoice} de opción múltiple, {questionConfig.trueFalse} de
-                        verdadero/falso). La IA asignará automáticamente las categorías y dificultades apropiadas.
+                        Se generarán{' '}
+                        <strong>{questionConfig.multipleChoice + questionConfig.trueFalse}</strong>{' '}
+                        preguntas ({questionConfig.multipleChoice} de opción múltiple,{' '}
+                        {questionConfig.trueFalse} de verdadero/falso). La IA asignará
+                        automáticamente las categorías y dificultades apropiadas.
                       </div>
                     </div>
                   </div>
@@ -576,39 +532,49 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
               <div className="space-y-6">
                 <div className="text-center">
                   <h3 className="text-2xl font-bold mb-2">Generar Preguntas</h3>
-                  <p className="text-base-content/70">La IA está procesando el contenido para crear las preguntas</p>
+                  <p className="text-base-content/70">
+                    La IA está procesando el contenido para crear las preguntas
+                  </p>
                 </div>
 
                 <div className="max-w-md mx-auto">
-                  {!isGenerating ? (
-                    <div className="text-center space-y-6">
-                      <div className="avatar">
-                        <div className="w-32 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-                          <Wand2 className="w-16 h-16 text-primary" />
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-lg mb-4">¿Listo para generar las preguntas?</p>
-                        <button onClick={generateQuestions} className="btn btn-primary btn-lg">
-                          <Sparkles className="w-5 h-5 mr-2" />
-                          Generar con IA
-                        </button>
+                  <div className="text-center space-y-6">
+                    <div className="flex justify-center">
+                      <div className="w-32 h-32 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                        <Wand2 className="w-16 h-16 text-primary" />
                       </div>
                     </div>
-                  ) : (
-                    <div className="text-center space-y-6">
-                      <div className="avatar">
-                        <div className="w-32 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-                          <span className="loading loading-spinner loading-lg text-primary"></span>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-lg font-medium">Generando preguntas...</p>
-                        <p className="text-sm text-base-content/70">
+                    <div>
+                      <p className="text-lg mb-4">
+                        {isGenerating
+                          ? 'Generando preguntas...'
+                          : '¿Listo para generar las preguntas?'}
+                      </p>
+                      <button
+                        onClick={generateQuestions}
+                        className="btn btn-primary btn-lg"
+                        disabled={isGenerating}
+                      >
+                        {isGenerating ? (
+                          <>
+                            <span className="loading loading-spinner loading-sm"></span>
+                            Generando con IA
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-5 h-5 mr-2" />
+                            Generar con IA
+                          </>
+                        )}
+                      </button>
+                      {isGenerating && (
+                        <p className="text-sm text-base-content/70 mt-4">
                           La IA está analizando el contenido y creando preguntas personalizadas
                         </p>
-                      </div>
-                      {/* Barra de progreso animada */}
+                      )}
+                    </div>
+                    {/* Barra de progreso animada solo cuando está generando */}
+                    {isGenerating && (
                       <div className="w-full">
                         <progress className="progress progress-primary w-full animate-pulse"></progress>
                         <div className="flex justify-between text-xs text-base-content/70 mt-1">
@@ -616,8 +582,8 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
                           <span>Generando preguntas...</span>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -628,92 +594,137 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-2xl font-bold">Preguntas Generadas</h3>
-                    <p className="text-base-content/70">Revisa y edita las preguntas antes de guardarlas</p>
+                    <p className="text-base-content/70">
+                      Revisa y edita las preguntas antes de guardarlas
+                    </p>
                   </div>
                   <div className="badge badge-info">
                     {selectedQuestions.length} de {generatedQuestions.length} seleccionadas
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  {generatedQuestions.map((question) => {
+                <div className="space-y-6">
+                  {generatedQuestions.map((question, index) => {
                     const isSelected = selectedQuestions.includes(question.id)
                     return (
                       <div
                         key={question.id}
-                        className={`bg-slate-800 text-white p-4 rounded-lg ${isSelected ? "ring-2 ring-primary" : ""}`}
+                        className={`bg-base-100 rounded-lg shadow-lg p-6 border-2 ${isSelected ? 'border-primary' : 'border-base-300'}`}
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-3 flex-1">
+                        {/* Header de la pregunta */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-3">
                             <input
                               type="checkbox"
-                              className="checkbox checkbox-primary mt-1"
+                              className="checkbox checkbox-primary"
                               checked={isSelected}
                               onChange={() => toggleQuestionSelection(question.id)}
                             />
-                            <div className="flex-1">
-                              <h4 className="text-lg font-medium mb-3">{question.text}</h4>
-                              
-                              {/* Mostrar opciones de la pregunta */}
-                              {question.type === "multiple_choice" && question.options && question.options.length > 0 && (
-                                <div className="mb-3">
-                                  <div className="grid grid-cols-1 gap-1 text-sm">
-                                    {question.options.map((option, index) => {
-                                      const optionText = typeof option === 'object' ? option.text : option
-                                      const isCorrect = typeof option === 'object' 
-                                        ? option.is_correct 
-                                        : index === question.correctAnswer
-                                      
-                                      return (
-                                        <div key={index} className={`px-2 py-1 rounded ${isCorrect ? 'bg-green-600' : 'bg-slate-700'}`}>
-                                          <span className="font-medium">{String.fromCharCode(65 + index)}.</span> {optionText}
-                                          {isCorrect && <span className="ml-2 text-green-200">✓</span>}
-                                        </div>
-                                      )
-                                    })}
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {question.type === "true_false" && (
-                                <div className="mb-3">
-                                  <div className="grid grid-cols-2 gap-1 text-sm">
-                                    <div className={`px-2 py-1 rounded ${question.correctAnswer === true ? 'bg-green-600' : 'bg-slate-700'}`}>
-                                      <span className="font-medium">Verdadero</span>
-                                      {question.correctAnswer === true && <span className="ml-2 text-green-200">✓</span>}
-                                    </div>
-                                    <div className={`px-2 py-1 rounded ${question.correctAnswer === false ? 'bg-green-600' : 'bg-slate-700'}`}>
-                                      <span className="font-medium">Falso</span>
-                                      {question.correctAnswer === false && <span className="ml-2 text-green-200">✓</span>}
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              <div className="flex gap-2 mb-3">
-                                <span className="badge bg-blue-500 text-white">
-                                  {question.type === "multiple_choice" ? "Selección múltiple" : "Verdadero/Falso"}
-                                </span>
-                                <span className="badge badge-outline text-white border-gray-400">
-                                  {question.category}
-                                </span>
-                              </div>
-                            </div>
+                            <span className="badge badge-outline badge-lg">
+                              Pregunta {index + 1}
+                            </span>
                           </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => openEditModal(question)}
-                              className="btn btn-sm bg-blue-600 hover:bg-blue-700 text-white border-none"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
+                          <div className="text-right">
+                            <EditAIQuestion
+                              question={question}
+                              onSave={updatedQuestion => {
+                                setGeneratedQuestions(prev =>
+                                  prev.map(q => (q.id === updatedQuestion.id ? updatedQuestion : q))
+                                )
+                              }}
+                              onCancel={() => {}}
+                              categories={Array.from(
+                                new Map(
+                                  generatedQuestions
+                                    .filter(q => q.category && q.category_id)
+                                    .map(q => [
+                                      q.category_id,
+                                      { category_id: q.category_id, name: q.category },
+                                    ])
+                                ).values()
+                              )}
+                            />
                             <button
                               onClick={() => removeQuestion(question.id)}
-                              className="btn btn-sm bg-red-600 hover:bg-red-700 text-white border-none"
+                              className="btn btn-sm bg-red-600 hover:bg-red-700 text-white border-none ml-2"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
+                        </div>
+
+                        <h3 className="text-lg font-semibold mb-4">{question.text}</h3>
+
+                        <div className="flex gap-2 mb-4">
+                          <span className="badge bg-purple-600 text-white">
+                            {question.category || 'Sin categoría'}
+                          </span>
+                          <span
+                            className={`badge ${question.type === 'multiple_choice' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'}`}
+                          >
+                            {question.type === 'multiple_choice'
+                              ? 'Selección múltiple'
+                              : 'Verdadero/Falso'}
+                          </span>
+                        </div>
+
+                        {/* Opciones de respuesta */}
+                        <div className="space-y-3">
+                          {question.type === 'multiple_choice' &&
+                            question.options &&
+                            question.options.length > 0 &&
+                            question.options.map((option, idx) => {
+                              // Si la opción es un objeto, usar option.text, si es string, usar option
+                              const optionText = typeof option === 'object' ? option.text : option
+                              const isCorrect =
+                                typeof option === 'object'
+                                  ? option.is_correct
+                                  : idx === question.correctAnswer
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`flex items-center p-4 rounded-lg border-2 ${isCorrect ? 'bg-success/20 border-success text-white' : 'bg-base-200 border-base-300 text-base-content'}`}
+                                >
+                                  <div className="flex items-center gap-3 flex-1">
+                                    {isCorrect && <CheckCircle className="w-5 h-5 text-success" />}
+                                    <span className="font-medium">{optionText}</span>
+                                  </div>
+                                  {isCorrect && (
+                                    <span className="badge badge-success badge-sm">Correcta</span>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          {question.type === 'true_false' && (
+                            <>
+                              <div
+                                className={`flex items-center p-4 rounded-lg border-2 ${question.correctAnswer === true ? 'bg-success/20 border-success text-white' : 'bg-base-200 border-base-300 text-base-content'}`}
+                              >
+                                <div className="flex items-center gap-3 flex-1">
+                                  {question.correctAnswer === true && (
+                                    <CheckCircle className="w-5 h-5 text-success" />
+                                  )}
+                                  <span className="font-medium">Verdadero</span>
+                                </div>
+                                {question.correctAnswer === true && (
+                                  <span className="badge badge-success badge-sm">Correcta</span>
+                                )}
+                              </div>
+                              <div
+                                className={`flex items-center p-4 rounded-lg border-2 ${question.correctAnswer === false ? 'bg-success/20 border-success text-white' : 'bg-base-200 border-base-300 text-base-content'}`}
+                              >
+                                <div className="flex items-center gap-3 flex-1">
+                                  {question.correctAnswer === false && (
+                                    <CheckCircle className="w-5 h-5 text-success" />
+                                  )}
+                                  <span className="font-medium">Falso</span>
+                                </div>
+                                {question.correctAnswer === false && (
+                                  <span className="badge badge-success badge-sm">Correcta</span>
+                                )}
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     )
@@ -740,41 +751,42 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
                 </div>
 
                 <div className="max-w-md mx-auto">
-                  {!isSaving ? (
-                    <div className="text-center space-y-6">
-                      <div className="avatar">
-                        <div className="w-32 rounded-full bg-gradient-to-br from-success/20 to-info/20 flex items-center justify-center">
-                          <Save className="w-16 h-16 text-success" />
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-lg mb-2">¿Guardar {selectedQuestions.length} preguntas?</p>
-                        <p className="text-sm text-base-content/70 mb-4">
-                          Las preguntas se añadirán a tu banco de preguntas y estarán disponibles para crear exámenes.
-                        </p>
-                        <button
-                          onClick={saveQuestions}
-                          className="btn btn-success btn-lg"
-                          disabled={selectedQuestions.length === 0}
-                        >
-                          <Save className="w-5 h-5 mr-2" />
-                          Guardar Preguntas
-                        </button>
+                  <div className="text-center space-y-6">
+                    <div className="flex justify-center">
+                      <div className="w-32 h-32 rounded-full bg-gradient-to-br from-success/20 to-info/20 flex items-center justify-center">
+                        <Save className="w-16 h-16 text-success" />
                       </div>
                     </div>
-                  ) : (
-                    <div className="text-center space-y-6">
-                      <div className="avatar">
-                        <div className="w-32 rounded-full bg-gradient-to-br from-success/20 to-info/20 flex items-center justify-center">
-                          <span className="loading loading-spinner loading-lg text-success"></span>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-lg font-medium">Guardando preguntas...</p>
-                        <p className="text-sm text-base-content/70">Añadiendo las preguntas a tu banco de preguntas</p>
-                      </div>
+                    <div>
+                      <p className="text-lg mb-2">
+                        {isSaving
+                          ? `Guardando ${selectedQuestions.length} preguntas...`
+                          : `¿Guardar ${selectedQuestions.length} preguntas?`}
+                      </p>
+                      <p className="text-sm text-base-content/70 mb-4">
+                        {isSaving
+                          ? 'Añadiendo las preguntas a tu banco de preguntas'
+                          : 'Las preguntas se añadirán a tu banco de preguntas y estarán disponibles para crear exámenes.'}
+                      </p>
+                      <button
+                        onClick={saveQuestions}
+                        className="btn btn-success btn-lg"
+                        disabled={selectedQuestions.length === 0 || isSaving}
+                      >
+                        {isSaving ? (
+                          <>
+                            <span className="loading loading-spinner loading-sm"></span>
+                            Guardando Preguntas
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-5 h-5 mr-2" />
+                            Guardar Preguntas
+                          </>
+                        )}
+                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             )}
@@ -802,142 +814,30 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
               className="btn btn-primary"
               disabled={
                 currentStep === 5 ||
-                (currentStep === 1 && !testText) || // El texto de prueba siempre está disponible
-                (currentStep === 2 && questionConfig.multipleChoice + questionConfig.trueFalse === 0) ||
+                (currentStep === 1 && !(extractedText.trim().length > 0 || pdfFile)) ||
+                (currentStep === 2 &&
+                  questionConfig.multipleChoice + questionConfig.trueFalse === 0) ||
                 (currentStep === 3 && generatedQuestions.length === 0) ||
                 isProcessing ||
                 isGenerating ||
                 isSaving
               }
             >
-              Siguiente
-              <ChevronRight className="w-4 h-4 ml-1" />
+              {isProcessing && currentStep === 1 && pdfFile ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="loading loading-spinner loading-sm"></span>
+                  Procesando PDF...
+                </span>
+              ) : (
+                <>
+                  Siguiente
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </>
+              )}
             </button>
           </div>
         </div>
       </div>
-
-      {/* Modal de Edición - Sin campo de categoría */}
-      {showEditModal && editingQuestion && (
-        <div className="modal modal-open">
-          <div className="modal-box bg-slate-800 text-white max-w-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold">Editar pregunta</h3>
-              <button onClick={() => setShowEditModal(false)} className="btn btn-ghost btn-circle text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              {/* Campo de pregunta */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Pregunta</label>
-                <input
-                  type="text"
-                  className="input input-bordered w-full bg-slate-700 text-white border-slate-600"
-                  value={editingQuestion.text}
-                  onChange={(e) => setEditingQuestion({ ...editingQuestion, text: e.target.value })}
-                />
-              </div>
-
-              {/* Solo tipo de pregunta */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Tipo de pregunta</label>
-                <select
-                  className="select select-bordered w-full bg-slate-700 text-white border-slate-600"
-                  value={editingQuestion.type}
-                  onChange={(e) => setEditingQuestion({ ...editingQuestion, type: e.target.value })}
-                >
-                  <option value="multiple_choice">Opción múltiple</option>
-                  <option value="true_false">Verdadero/Falso</option>
-                </select>
-              </div>
-
-              {/* Opciones (solo para preguntas de opción múltiple) */}
-              {editingQuestion.type === "multiple_choice" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Opciones</label>
-                  <div className="space-y-3">
-                    {editingQuestion.options?.map((option, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="correct_answer"
-                          className="radio radio-primary"
-                          checked={editingQuestion.correctAnswer === index}
-                          onChange={() => setEditingQuestion({ ...editingQuestion, correctAnswer: index })}
-                        />
-                        <input
-                          type="text"
-                          className="input input-bordered flex-1 bg-slate-700 text-white border-slate-600"
-                          value={option}
-                          onChange={(e) => {
-                            const newOptions = [...editingQuestion.options]
-                            newOptions[index] = e.target.value
-                            setEditingQuestion({ ...editingQuestion, options: newOptions })
-                          }}
-                        />
-                        <button
-                          onClick={() => removeOption(editingQuestion.id, index)}
-                          className="btn btn-ghost btn-circle btn-sm text-red-400 hover:bg-red-900"
-                          disabled={editingQuestion.options.length <= 2}
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={() => addOption(editingQuestion.id)}
-                    className="btn btn-outline btn-primary w-full mt-3"
-                  >
-                    Añadir opción
-                  </button>
-                </div>
-              )}
-
-              {/* Respuesta para verdadero/falso */}
-              {editingQuestion.type === "true_false" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Respuesta correcta</label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="tf_answer"
-                        className="radio radio-primary"
-                        checked={editingQuestion.correctAnswer === true}
-                        onChange={() => setEditingQuestion({ ...editingQuestion, correctAnswer: true })}
-                      />
-                      <span>Verdadero</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="tf_answer"
-                        className="radio radio-primary"
-                        checked={editingQuestion.correctAnswer === false}
-                        onChange={() => setEditingQuestion({ ...editingQuestion, correctAnswer: false })}
-                      />
-                      <span>Falso</span>
-                    </label>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="modal-action">
-              <button
-                onClick={saveEditedQuestion}
-                className="btn bg-pink-600 hover:bg-pink-700 text-white border-none w-full"
-              >
-                Actualizar pregunta
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   )
 }

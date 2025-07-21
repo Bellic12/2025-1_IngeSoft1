@@ -11,7 +11,14 @@ const Question = sequelize.define(
     text: { type: DataTypes.TEXT, allowNull: false },
     type: { type: DataTypes.STRING, allowNull: false },
     category_id: DataTypes.INTEGER,
-    source: { type: DataTypes.STRING, defaultValue: 'manual', allowNull: true },
+    source: {
+      type: DataTypes.STRING,
+      defaultValue: 'manual',
+      allowNull: true,
+      validate: {
+        isIn: [['manual', 'generated']],
+      },
+    },
     created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, allowNull: false },
     updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, allowNull: false },
   },

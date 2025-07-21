@@ -145,20 +145,10 @@ const Questions = () => {
         onClose={() => setShowAIGenerator(false)}
         onQuestionsGenerated={async generatedQuestions => {
           try {
-            for (const question of generatedQuestions) {
-              // Crear la pregunta con los campos correctos de la BD
-              const newQuestion = await window.questionAPI.create({
-                text: question.text,
-                type: question.type,
-                category_id: question.category,
-                source: 'AI', // Indicar que fue generada por IA
-                options: question.options.map(opt => ({
-                  text: opt.text,
-                  is_correct: opt.is_correct,
-                })),
-              })
-            }
-
+            // Las preguntas ya fueron guardadas en aiQuestionGenerator
+            // Solo necesitamos actualizar la lista de preguntas
+            console.log('Preguntas recibidas desde AI Generator:', generatedQuestions.length)
+            
             // Actualizar la lista de preguntas
             fetchQuestions({
               searchTerm: searchTerm.trim(),

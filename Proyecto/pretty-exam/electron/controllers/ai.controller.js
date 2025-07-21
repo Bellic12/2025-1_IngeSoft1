@@ -3,61 +3,14 @@ import OptionController from './option.controller'
 import ExamController from './exam.controller'
 import ResultController from './result.controller'
 import { boldMarkdownToHtml } from '../utils/markdown'
-import { readPdfText } from '../utils/pdfUtils'
 
-const apiKey = null
+const apiKey = 'AIzaSyA6XbOUVChgVYbU7TyeC9waui2oX98aX20'
 
 if (!apiKey) {
   console.log('Gemini API key is not set.')
 }
 
 const AIController = {
-  // Método para extraer texto del PDF
-  extractPdfText: async pdfBuffer => {
-    try {
-      console.log('AIController: Iniciando extracción de PDF, buffer size:', pdfBuffer.byteLength)
-      
-      // Validar que el buffer no esté vacío
-      if (!pdfBuffer || pdfBuffer.byteLength === 0) {
-        throw new Error('Buffer de PDF vacío o inválido')
-      }
-      
-      // Verificar que sea un PDF válido (debe comenzar con %PDF)
-      const header = new Uint8Array(pdfBuffer.slice(0, 4))
-      const headerString = String.fromCharCode(...header)
-      if (!headerString.startsWith('%PDF')) {
-        throw new Error('El archivo no parece ser un PDF válido')
-      }
-      
-      console.log('AIController: PDF header válido:', headerString)
-      
-      const result = await readPdfText(pdfBuffer)
-      console.log('AIController: Extracción exitosa')
-      console.log('AIController: Páginas:', result.pages)
-      console.log('AIController: Caracteres:', result.text.length)
-      console.log('AIController: Primeros 100 caracteres:', result.text.substring(0, 100))
-      
-      return result
-    } catch (error) {
-      console.error('AIController: Error completo:', error)
-      console.error('AIController: Error stack:', error.stack)
-      
-      // Intentar proporcionar información más específica del error
-      let errorMessage = 'Error extracting text from PDF'
-      if (error.message.includes('Could not load PDF.js')) {
-        errorMessage = 'No se pudo cargar la librería PDF.js'
-      } else if (error.message.includes('Invalid PDF')) {
-        errorMessage = 'El archivo PDF está corrupto o no es válido'
-      } else if (error.message.includes('Password required')) {
-        errorMessage = 'El PDF está protegido por contraseña'
-      } else {
-        errorMessage = error.message
-      }
-      
-      throw new Error(errorMessage)
-    }
-  },
-
   // Método para generar preguntas usando Gemini AI
   generateQuestions: async config => {
     if (!apiKey) {
@@ -137,9 +90,9 @@ IMPORTANTE:
 
       const data = await response.json()
       console.log('AIController: Respuesta recibida de Gemini API')
-      
+
       const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
-      
+
       if (!generatedText) {
         throw new Error('No se pudo generar el contenido desde la API')
       }
@@ -153,7 +106,7 @@ IMPORTANTE:
           .replace(/```\n?/g, '')
           .trim()
         const parsedQuestions = JSON.parse(cleanedText)
-        
+
         if (!parsedQuestions.questions || !Array.isArray(parsedQuestions.questions)) {
           throw new Error('El formato de respuesta de la API no es válido')
         }
