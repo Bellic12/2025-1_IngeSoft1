@@ -1,33 +1,20 @@
-import { app as _, ipcMain as r, BrowserWindow as P } from "electron";
-import { fileURLToPath as b } from "node:url";
-import { Sequelize as L, DataTypes as s, Op as C } from "sequelize";
-import G, { join as I } from "path";
-import R from "fs";
-import g from "node:path";
-const v = G.dirname(b(import.meta.url));
-function K() {
-  let t;
-  if (_.isPackaged) {
-    const e = _.getPath("userData");
-    t = I(e, "pretty_exam.db");
-    const a = I(process.resourcesPath, "pretty_exam.db");
-    !R.existsSync(t) && R.existsSync(a) && R.copyFileSync(a, t);
-  } else
-    t = I(v, "..", "..", "pretty_exam.db");
-  return t;
-}
-const n = new L({
+import { ipcMain as s, app as h, BrowserWindow as O } from "electron";
+import { fileURLToPath as D } from "node:url";
+import { Sequelize as B, DataTypes as r, Op as C } from "sequelize";
+import L, { join as S } from "path";
+import E from "node:path";
+const G = L.dirname(D(import.meta.url)), n = new B({
   dialect: "sqlite",
-  storage: K(),
+  storage: S(G, "..", "pretty_exam.db"),
   logging: !1
 }), u = n.define(
   "Category",
   {
-    category_id: { type: s.INTEGER, primaryKey: !0, autoIncrement: !0 },
-    name: { type: s.STRING, allowNull: !1 },
+    category_id: { type: r.INTEGER, primaryKey: !0, autoIncrement: !0 },
+    name: { type: r.STRING, allowNull: !1 },
     created_at: {
-      type: s.DATE,
-      defaultValue: s.NOW,
+      type: r.DATE,
+      defaultValue: r.NOW,
       allowNull: !1
     }
   },
@@ -45,10 +32,10 @@ u.associate = () => {
 const c = n.define(
   "Option",
   {
-    option_id: { type: s.INTEGER, primaryKey: !0, autoIncrement: !0 },
-    text: { type: s.TEXT, allowNull: !1 },
-    is_correct: { type: s.BOOLEAN, defaultValue: !1 },
-    question_id: { type: s.INTEGER, allowNull: !1 }
+    option_id: { type: r.INTEGER, primaryKey: !0, autoIncrement: !0 },
+    text: { type: r.TEXT, allowNull: !1 },
+    is_correct: { type: r.BOOLEAN, defaultValue: !1 },
+    question_id: { type: r.INTEGER, allowNull: !1 }
     /** created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
@@ -74,12 +61,12 @@ c.associate = () => {
 const d = n.define(
   "Exam",
   {
-    exam_id: { type: s.INTEGER, primaryKey: !0, autoIncrement: !0 },
-    name: { type: s.TEXT, allowNull: !1 },
-    description: { type: s.TEXT, allowNull: !0 },
-    duration_minutes: { type: s.INTEGER, allowNull: !0, validate: { isInt: !0 } },
-    created_at: { type: s.DATE, defaultValue: s.NOW, allowNull: !1 },
-    updated_at: { type: s.DATE, defaultValue: s.NOW, allowNull: !1 }
+    exam_id: { type: r.INTEGER, primaryKey: !0, autoIncrement: !0 },
+    name: { type: r.TEXT, allowNull: !1 },
+    description: { type: r.TEXT, allowNull: !0 },
+    duration_minutes: { type: r.INTEGER, allowNull: !0, validate: { isInt: !0 } },
+    created_at: { type: r.DATE, defaultValue: r.NOW, allowNull: !1 },
+    updated_at: { type: r.DATE, defaultValue: r.NOW, allowNull: !1 }
   },
   {
     tableName: "Exam",
@@ -99,13 +86,13 @@ d.associate = () => {
 const i = n.define(
   "Question",
   {
-    question_id: { type: s.INTEGER, primaryKey: !0, autoIncrement: !0 },
-    text: { type: s.TEXT, allowNull: !1 },
-    type: { type: s.STRING, allowNull: !1 },
-    category_id: s.INTEGER,
-    source: { type: s.STRING, defaultValue: "manual", allowNull: !0 },
-    created_at: { type: s.DATE, defaultValue: s.NOW, allowNull: !1 },
-    updated_at: { type: s.DATE, defaultValue: s.NOW, allowNull: !1 }
+    question_id: { type: r.INTEGER, primaryKey: !0, autoIncrement: !0 },
+    text: { type: r.TEXT, allowNull: !1 },
+    type: { type: r.STRING, allowNull: !1 },
+    category_id: r.INTEGER,
+    source: { type: r.STRING, defaultValue: "manual", allowNull: !0 },
+    created_at: { type: r.DATE, defaultValue: r.NOW, allowNull: !1 },
+    updated_at: { type: r.DATE, defaultValue: r.NOW, allowNull: !1 }
   },
   {
     tableName: "Question",
@@ -132,10 +119,10 @@ i.associate = () => {
 const y = n.define(
   "UserAnswer",
   {
-    result_id: { type: s.INTEGER, primaryKey: !0, allowNull: !1 },
-    question_id: { type: s.INTEGER, primaryKey: !0, allowNull: !1 },
-    option_id: { type: s.INTEGER, allowNull: !1 },
-    is_correct: { type: s.BOOLEAN, allowNull: !1 }
+    result_id: { type: r.INTEGER, primaryKey: !0, allowNull: !1 },
+    question_id: { type: r.INTEGER, primaryKey: !0, allowNull: !1 },
+    option_id: { type: r.INTEGER, allowNull: !1 },
+    is_correct: { type: r.BOOLEAN, allowNull: !1 }
   },
   {
     tableName: "UserAnswer",
@@ -148,13 +135,13 @@ y.associate = () => {
 const m = n.define(
   "Result",
   {
-    result_id: { type: s.INTEGER, primaryKey: !0, autoIncrement: !0 },
-    exam_id: { type: s.INTEGER, allowNull: !1 },
-    score: { type: s.INTEGER, allowNull: !1, validate: { min: 0, max: 100 } },
-    correct_answers: { type: s.INTEGER, allowNull: !1 },
-    incorrect_answers: { type: s.INTEGER, allowNull: !1 },
-    time_used: { type: s.INTEGER, allowNull: !1 },
-    taken_at: { type: s.DATE, defaultValue: s.NOW, allowNull: !1 }
+    result_id: { type: r.INTEGER, primaryKey: !0, autoIncrement: !0 },
+    exam_id: { type: r.INTEGER, allowNull: !1 },
+    score: { type: r.INTEGER, allowNull: !1, validate: { min: 0, max: 100 } },
+    correct_answers: { type: r.INTEGER, allowNull: !1 },
+    incorrect_answers: { type: r.INTEGER, allowNull: !1 },
+    time_used: { type: r.INTEGER, allowNull: !1 },
+    taken_at: { type: r.DATE, defaultValue: r.NOW, allowNull: !1 }
   },
   {
     tableName: "Result",
@@ -178,7 +165,7 @@ u.associate && u.associate();
 d.associate && d.associate();
 m.associate && m.associate();
 y.associate && y.associate();
-const f = {
+const _ = {
   getAll: async () => (await i.findAll({
     include: [
       { model: c, as: "options" },
@@ -234,7 +221,7 @@ const f = {
         transaction: a,
         type: n.QueryTypes.RAW
       });
-      const N = await n.query(
+      const x = await n.query(
         "SELECT option_id FROM `Option` WHERE `question_id` = ?",
         {
           replacements: [t],
@@ -242,8 +229,8 @@ const f = {
           type: n.QueryTypes.SELECT
         }
       );
-      if (N.length > 0) {
-        const w = N.map((h) => h.option_id);
+      if (x.length > 0) {
+        const w = x.map((f) => f.option_id);
         await n.query(
           `DELETE FROM \`UserAnswer\` WHERE \`option_id\` IN (${w.map(() => "?").join(",")})`,
           {
@@ -295,8 +282,8 @@ const f = {
       if (a && a.length > 0 && (o.category_id = {
         [C.in]: a
       }), e && e.trim()) {
-        const w = l(e), h = [];
-        h.push({
+        const w = l(e), f = [];
+        f.push({
           text: n.where(
             n.fn(
               "LOWER",
@@ -325,7 +312,7 @@ const f = {
             "LIKE",
             `%${w}%`
           )
-        }), (!a || a.length === 0) && h.push(
+        }), (!a || a.length === 0) && f.push(
           n.where(
             n.fn(
               "LOWER",
@@ -355,10 +342,10 @@ const f = {
             `%${w}%`
           )
         );
-        const D = { [C.or]: h };
+        const R = { [C.or]: f };
         Object.keys(o).length > 0 ? o = {
-          [C.and]: [o, D]
-        } : o = D;
+          [C.and]: [o, R]
+        } : o = R;
       }
       return (await i.findAll({
         where: o,
@@ -381,23 +368,23 @@ const f = {
     order: [["question_id", "DESC"]]
   })).map((a) => a.get({ plain: !0 }))
 };
-r.handle("questions:getAll", async () => await f.getAll());
-r.handle("questions:create", async (t, e) => await f.create(e));
-r.handle("questions:update", async (t, e, a) => await f.update(e, a));
-r.handle("questions:delete", async (t, e) => await f.delete(e));
-r.handle("questions:search", async (t, e) => await f.search(e));
-r.handle("questions:getByCategory", async (t, e) => await f.getByCategory(e));
-const T = {
+s.handle("questions:getAll", async () => await _.getAll());
+s.handle("questions:create", async (t, e) => await _.create(e));
+s.handle("questions:update", async (t, e, a) => await _.update(e, a));
+s.handle("questions:delete", async (t, e) => await _.delete(e));
+s.handle("questions:search", async (t, e) => await _.search(e));
+s.handle("questions:getByCategory", async (t, e) => await _.getByCategory(e));
+const q = {
   getAll: async () => await c.findAll(),
   getById: async (t) => await c.findOne({ where: { option_id: t } }),
   create: async (t) => await c.create(t),
   update: async (t, e) => await c.update(e, { where: { option_id: t } }),
   delete: async (t) => await c.destroy({ where: { option_id: t } })
 };
-r.handle("options:getAll", async () => await T.getAll());
-r.handle("options:create", async (t, e) => await T.create(e));
-r.handle("options:update", async (t, e, a) => await T.update(e, a));
-r.handle("options:delete", async (t, e) => await T.delete(e));
+s.handle("options:getAll", async () => await q.getAll());
+s.handle("options:create", async (t, e) => await q.create(e));
+s.handle("options:update", async (t, e, a) => await q.update(e, a));
+s.handle("options:delete", async (t, e) => await q.delete(e));
 const A = {
   // Get all categories
   getAll: async () => (await u.findAll({
@@ -441,12 +428,12 @@ const A = {
     return e && (a.category_id = { [u.sequelize.Op.ne]: e }), !!await u.findOne({ where: a });
   }
 };
-r.handle("categories:getAll", async () => await A.getAll());
-r.handle("categories:create", async (t, e) => await A.create(e));
-r.handle("categories:update", async (t, e, a) => await A.update(e, a));
-r.handle("categories:delete", async (t, e) => await A.delete(e));
-r.handle("categories:nameExists", async (t, e, a = null) => await A.nameExists(e, a));
-const E = {
+s.handle("categories:getAll", async () => await A.getAll());
+s.handle("categories:create", async (t, e) => await A.create(e));
+s.handle("categories:update", async (t, e, a) => await A.update(e, a));
+s.handle("categories:delete", async (t, e) => await A.delete(e));
+s.handle("categories:nameExists", async (t, e, a = null) => await A.nameExists(e, a));
+const g = {
   // Get all exams with associated questions
   getAll: async () => (await d.findAll({
     include: [{ model: i, as: "questions" }]
@@ -556,7 +543,7 @@ const E = {
       throw await a.rollback(), l;
     }
   }
-}, x = {
+}, T = {
   getAll: async () => (await m.findAll({
     include: [
       { model: d, as: "exam" },
@@ -587,7 +574,7 @@ const E = {
   delete: async (t) => await m.destroy({ where: { result_id: t } })
 };
 console.log("Gemini API key is not set.");
-const Q = {
+const P = {
   explainQuestion: async (t, e) => {
     throw new Error("Gemini API key is not set.");
   },
@@ -596,22 +583,22 @@ const Q = {
     throw new Error("Gemini API key is not set.");
   }
 };
-r.handle("ai:explainQuestion", async (t, e, a) => await Q.explainQuestion(e, a));
-r.handle("ai:feedbackExam", async (t, e, a) => await Q.feedbackExam(e, a));
-r.handle("exams:getAll", async () => await E.getAll());
-r.handle("exams:getById", async (t, e) => await E.getById(e));
-r.handle("exams:create", async (t, e) => await E.create(e));
-r.handle("exams:update", async (t, e, a) => await E.update(e, a));
-r.handle("exams:delete", async (t, e) => await E.delete(e));
-r.handle("exams:getQuestions", async (t, e) => await E.getQuestions(e));
-r.handle("exams:addQuestions", async (t, e, a) => await E.addQuestions(e, a));
-r.handle("exams:removeQuestions", async (t, e, a) => await E.removeQuestions(e, a));
-r.handle("results:getAll", async () => await x.getAll());
-r.handle("results:getById", async (t, e) => await x.getById(e));
-r.handle("results:create", async (t, e) => await x.create(e));
-r.handle("results:delete", async (t, e) => await x.delete(e));
-r.handle("results:getByExamId", async (t, e) => await x.getByExamId(e));
-const q = {
+s.handle("ai:explainQuestion", async (t, e, a) => await P.explainQuestion(e, a));
+s.handle("ai:feedbackExam", async (t, e, a) => await P.feedbackExam(e, a));
+s.handle("exams:getAll", async () => await g.getAll());
+s.handle("exams:getById", async (t, e) => await g.getById(e));
+s.handle("exams:create", async (t, e) => await g.create(e));
+s.handle("exams:update", async (t, e, a) => await g.update(e, a));
+s.handle("exams:delete", async (t, e) => await g.delete(e));
+s.handle("exams:getQuestions", async (t, e) => await g.getQuestions(e));
+s.handle("exams:addQuestions", async (t, e, a) => await g.addQuestions(e, a));
+s.handle("exams:removeQuestions", async (t, e, a) => await g.removeQuestions(e, a));
+s.handle("results:getAll", async () => await T.getAll());
+s.handle("results:getById", async (t, e) => await T.getById(e));
+s.handle("results:create", async (t, e) => await T.create(e));
+s.handle("results:delete", async (t, e) => await T.delete(e));
+s.handle("results:getByExamId", async (t, e) => await T.getByExamId(e));
+const N = {
   getAll: async () => await y.findAll({ include: ["result", "question", "option"] }),
   getById: async (t, e) => await y.findOne({
     where: { result_id: t, question_id: e },
@@ -630,42 +617,42 @@ const q = {
   },
   delete: async (t, e) => await y.destroy({ where: { result_id: t, question_id: e } })
 };
-r.handle("userAnswers:getAll", async () => await q.getAll());
-r.handle("userAnswers:getById", async (t, e, a) => await q.getById(e, a));
-r.handle("userAnswers:create", async (t, e) => await q.create(e));
-r.handle("userAnswers:delete", async (t, e, a) => await q.delete(e, a));
-const S = g.dirname(b(import.meta.url));
-process.env.APP_ROOT = g.join(S, "..");
-const O = process.env.VITE_DEV_SERVER_URL, z = g.join(process.env.APP_ROOT, "dist-electron"), k = g.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = O ? g.join(process.env.APP_ROOT, "public") : k;
+s.handle("userAnswers:getAll", async () => await N.getAll());
+s.handle("userAnswers:getById", async (t, e, a) => await N.getById(e, a));
+s.handle("userAnswers:create", async (t, e) => await N.create(e));
+s.handle("userAnswers:delete", async (t, e, a) => await N.delete(e, a));
+const b = E.dirname(D(import.meta.url));
+process.env.APP_ROOT = E.join(b, "..");
+const I = process.env.VITE_DEV_SERVER_URL, W = E.join(process.env.APP_ROOT, "dist-electron"), Q = E.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = I ? E.join(process.env.APP_ROOT, "public") : Q;
 let p = null;
-function B() {
-  p = new P({
-    icon: g.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+function k() {
+  p = new O({
+    icon: E.join(process.env.VITE_PUBLIC, "Logo.png"),
     webPreferences: {
-      preload: g.join(S, "preload.mjs")
+      preload: E.join(b, "preload.mjs")
     }
   }), p.webContents.on("did-finish-load", () => {
     p == null || p.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
-  }), O ? p.loadURL(O) : p.loadFile(g.join(k, "index.html"));
+  }), I ? p.loadURL(I) : p.loadFile(E.join(Q, "index.html"));
 }
-_.on("window-all-closed", () => {
-  process.platform !== "darwin" && (_.quit(), p = null);
+h.on("window-all-closed", () => {
+  process.platform !== "darwin" && (h.quit(), p = null);
 });
-_.on("activate", () => {
-  P.getAllWindows().length === 0 && B();
+h.on("activate", () => {
+  O.getAllWindows().length === 0 && k();
 });
-_.whenReady().then(async () => {
+h.whenReady().then(async () => {
   try {
     await n.authenticate(), console.log("Database connection established.");
   } catch (t) {
-    console.error("Error connecting to the database:", t), _.quit();
+    console.error("Error connecting to the database:", t), h.quit();
     return;
   }
-  B();
+  k();
 });
 export {
-  z as MAIN_DIST,
-  k as RENDERER_DIST,
-  O as VITE_DEV_SERVER_URL
+  W as MAIN_DIST,
+  Q as RENDERER_DIST,
+  I as VITE_DEV_SERVER_URL
 };
