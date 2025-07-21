@@ -5,9 +5,9 @@ import DeleteQuestion from './forms/deleteQuestion'
 const getTypeBadge = type => {
   switch (type) {
     case 'multiple_choice':
-      return 'bg-blue-500'
+      return 'bg-info text-info-content'
     default:
-      return 'bg-green-500'
+      return 'bg-accent text-accent-content'
   }
 }
 
@@ -18,20 +18,18 @@ const QuestionCard = ({ question, fetchQuestions }) => {
         <div className="flex flex-col">
           <div className="flex-1">
             <h3 className="card-title text-lg mb-3">{question.text}</h3>
-            <div className="flex flex-wrap gap-2 mb-4">
-              <div className={`badge ${getTypeBadge(question.type)}`}>
+          </div>
+          <div className="flex justify-between items-center">
+            <div className="flex flex-wrap gap-2">
+              <div className={`badge ${getTypeBadge(question.type)} font-medium`}>
                 {question.type === 'multiple_choice' ? 'Selección múltiple' : 'Verdadero/Falso'}
               </div>
-              <div className="badge badge-outline">
-                {typeof question.category === 'object'
-                  ? question.category?.name || 'General'
-                  : question.category || 'General'}
-              </div>
+              <div className="badge badge-outline">{question.category?.name || 'General'}</div>
             </div>
-          </div>
-          <div className="flex gap-2">
-            <UpdateQuestion question={question} fetchQuestions={fetchQuestions} />
-            <DeleteQuestion question={question} fetchQuestions={fetchQuestions} />
+            <div className="flex gap-2">
+              <UpdateQuestion question={question} fetchQuestions={fetchQuestions} />
+              <DeleteQuestion question={question} fetchQuestions={fetchQuestions} />
+            </div>
           </div>
         </div>
       </div>
