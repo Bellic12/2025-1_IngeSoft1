@@ -57,13 +57,12 @@ const UpdateExam = ({ exam, fetchExams }) => {
     setLoading(true)
 
     try {
-      const updatedExam = await window.examAPI.update(exam.exam_id, {
+      await window.examAPI.update(exam.exam_id, {
         name: name.trim(),
         description: description.trim(),
         duration: duration.trim(),
       })
 
-      console.log('Examen actualizado:', updatedExam)
       toast.success('Examen actualizado exitosamente')
       fetchExams()
       handleCloseModal()

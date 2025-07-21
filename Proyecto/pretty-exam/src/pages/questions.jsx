@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Search, Filter, Wand2 } from 'lucide-react'
 import Question from '../components/question'
-import CreateQuestion from '../components/forms/createQuestion'
+import CreateQuestionModal from '../components/forms/createQuestionModal'
 import CategoryFilter from '../components/CategoryFilter'
 import AIQuestionGenerator from '../components/aiQuestionGenerator'
 
@@ -16,6 +16,7 @@ const Questions = () => {
 
   const fetchQuestions = async (filters = {}) => {
     setLoading(true)
+    setError(null)
     try {
       let questions
       // If no filters, get all questions
@@ -30,7 +31,10 @@ const Questions = () => {
       }
       setQuestions(questions)
     } catch (err) {
-      setError(err.message)
+      console.error('Error fetching questions:', err)
+      setError(`Error al buscar preguntas: ${err.message}`)
+      // Don't break the UI, show empty results instead
+      setQuestions([])
     }
     setLoading(false)
   }
@@ -51,7 +55,6 @@ const Questions = () => {
     }, 300) // 300ms debounce
 
     return () => clearTimeout(timeoutId)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, selectedCategories])
 
   // Initial load
@@ -122,7 +125,7 @@ const Questions = () => {
           </div>
         )}
       </div>
-      <CreateQuestion
+      <CreateQuestionModal
         fetchQuestions={() =>
           fetchQuestions({ searchTerm: searchTerm.trim(), categoryIds: selectedCategories })
         }

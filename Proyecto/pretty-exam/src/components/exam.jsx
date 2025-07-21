@@ -1,10 +1,12 @@
 import { Calendar, Clock, HelpCircle, Play } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import UpdateExam from './forms/updateExam'
 import DeleteExam from './forms/deleteExam'
 
 const Exam = ({ exam, fetchExams }) => {
   const navigate = useNavigate()
+  const [questionCount, setQuestionCount] = useState(0)
 
   // Format dates
   const formatDate = dateString => {
@@ -16,6 +18,23 @@ const Exam = ({ exam, fetchExams }) => {
       day: '2-digit',
     })
   }
+
+  // Fetch questions count
+  const fetchQuestionCount = async () => {
+    try {
+      if (exam?.exam_id) {
+        const questions = await window.examAPI.getQuestions(exam.exam_id)
+        setQuestionCount(questions.length)
+      }
+    } catch (err) {
+      console.error('Error al cargar preguntas:', err)
+      setQuestionCount(0)
+    }
+  }
+
+  useEffect(() => {
+    fetchQuestionCount()
+  }, [exam?.exam_id])
 
   const handleExamClick = () => {
     navigate(`/exam/${exam.exam_id}`)
@@ -59,7 +78,7 @@ const Exam = ({ exam, fetchExams }) => {
         <div className="flex items-center gap-4 text-xs text-base-content/60 mb-4">
           <div className="flex items-center gap-1">
             <HelpCircle className="w-4 h-4" />
-            <span>{exam?.question_count || 0} preguntas</span>
+            <span>{questionCount} preguntas</span>
           </div>
           <div className="flex items-center gap-1">
             <Clock className="w-4 h-4" />

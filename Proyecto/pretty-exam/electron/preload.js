@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('questionAPI', {
   update: (id, data) => ipcRenderer.invoke('questions:update', id, data),
   delete: id => ipcRenderer.invoke('questions:delete', id),
   search: filters => ipcRenderer.invoke('questions:search', filters),
+  getByCategory: categoryId => ipcRenderer.invoke('questions:getByCategory', categoryId),
 })
 
 // Option API
@@ -64,6 +65,7 @@ contextBridge.exposeInMainWorld('categoryAPI', {
 contextBridge.exposeInMainWorld('resultAPI', {
   getAll: () => ipcRenderer.invoke('results:getAll'),
   getById: id => ipcRenderer.invoke('results:getById', id),
+  getByExamId: examId => ipcRenderer.invoke('results:getByExamId', examId),
   create: data => ipcRenderer.invoke('results:create', data),
   delete: id => ipcRenderer.invoke('results:delete', id),
 })

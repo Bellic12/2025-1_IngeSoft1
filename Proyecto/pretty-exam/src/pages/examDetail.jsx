@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Plus, Play, ArrowLeft } from 'lucide-react'
+import { Plus, Play, ArrowLeft, History } from 'lucide-react'
 import { toast } from 'react-toastify'
 import Question from '../components/question'
 import AddQuestionsModal from '../components/forms/addQuestionsModal'
@@ -42,7 +42,6 @@ const ExamDetail = () => {
 
   useEffect(() => {
     fetchData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const handleStartSimulation = () => {
@@ -51,6 +50,10 @@ const ExamDetail = () => {
 
   const handleAddQuestions = () => {
     setShowAddQuestions(true)
+  }
+
+  const handleGoHistory = () => {
+    navigate(`/exam/${id}/history`)
   }
 
   const handleGoBack = () => {
@@ -107,11 +110,15 @@ const ExamDetail = () => {
             <Plus className="w-4 h-4" />
             Gestionar Preguntas
           </button>
+          <button className="btn btn-warning" onClick={handleGoHistory}>
+            <History className="w-4 h-4" />
+            Historial de resultados
+          </button>
         </div>
       </div>
 
       {/* Questions section */}
-      <div style={{ height: 'calc(100vh - 300px)' }} className="overflow-hidden">
+      <div className="overflow-y-scroll">
         <h2 className="text-xl font-semibold mb-4">Preguntas del Examen</h2>
         {questions.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">

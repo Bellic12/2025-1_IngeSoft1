@@ -27,7 +27,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
   const [categoryId, setCategoryId] = useState(null)
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(false)
-  const [formError, setFormError] = useState('')
+  const [, setFormError] = useState('')
   const [showCategorySelector, setShowCategorySelector] = useState(false)
   const [editingCategoryId, setEditingCategoryId] = useState(null)
   const [modalWasOpen, setModalWasOpen] = useState(false)
@@ -86,7 +86,6 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
       }
       return prevOptions
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type])
 
   const handleOnChangeType = event => {
@@ -125,12 +124,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
   const handleSubmit = async event => {
     event.preventDefault()
     setFormError('')
-    
-    if (!categoryId) {
-      setFormError('Debes seleccionar una categoría')
-      return
-    }
-    
+
     try {
       const questionObj = QuestionFactory.createQuestion(type, {
         text,
@@ -138,38 +132,66 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
         options: options.map(opt => ({
           text: opt.text,
           is_correct: opt.isCorrect,
-          option_id: opt.option_id || undefined,
         })),
       })
+
       questionObj.validate()
       setLoading(true)
-      await window.questionAPI.update(question.question_id, {
-        ...questionObj.toAPIFormat(),
+
+      // Send clean data without option_id to avoid foreign key issues
+      const updateData = {
+        text,
+        type,
+        category_id: categoryId,
         options: options.map(opt => ({
           text: opt.text,
           is_correct: opt.isCorrect,
-          option_id: opt.option_id || undefined,
         })),
-      })
+      }
+
+      await window.questionAPI.update(question.question_id, updateData)
       toast.success('Pregunta actualizada correctamente')
       fetchQuestions()
       document.getElementById('modal_update_question' + question.question_id).close()
+      setLoading(false)
     } catch (error) {
-      setFormError(error.message)
+      console.error('Error updating question:', error)
+
+      // Handle specific error types with user-friendly messages
+      let userMessage = 'Error al actualizar la pregunta'
+
+      if (error.message === 'CATEGORY_NOT_FOUND') {
+        userMessage = 'La categoría seleccionada no existe. Por favor, selecciona otra categoría.'
+      } else if (error.message === 'QUESTION_NOT_FOUND') {
+        userMessage = 'La pregunta no fue encontrada. Por favor, recarga la página.'
+      } else if (error.message === 'UPDATE_FAILED') {
+        userMessage = 'No se pudo actualizar la pregunta. Inténtalo de nuevo.'
+      }
+
+      // Don't show technical errors in the form, only in console
+      setFormError('')
+      toast.error(userMessage)
       setLoading(false)
     }
+  }
+
+  const getCurrentCategoryName = () => {
+    if (!categoryId) return 'Sin categoría'
+    const category = categories.find(c => c.category_id === categoryId)
+    return category?.name || 'Categoría seleccionada'
   }
 
   const resetForm = () => {
     setText(originalState.current.text)
     setType(originalState.current.type)
     setOptions(originalState.current.options)
+    setCategoryId(originalState.current.categoryId)
     setLoading(false)
-    setFormError('')
   }
 
-  const handleOpenModal = () => {
+  const handleOpenModal = async () => {
     resetForm()
+    await fetchCategories()
     document.getElementById('modal_update_question' + question.question_id).showModal()
   }
 
@@ -236,7 +258,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  className={`btn flex-1 justify-start ${categoryId ? 'btn-outline' : 'btn-outline btn-error'}`}
+                  className="btn btn-error text-white flex-1 justify-start"
                   onClick={() => {
                     setModalWasOpen(true)
                     document.getElementById('modal_update_question' + question.question_id).close()
@@ -244,10 +266,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
                   }}
                 >
                   <Tag className="w-4 h-4" />
-                  {categoryId 
-                    ? categories.find(c => c.category_id === categoryId)?.name || 'Categoría seleccionada'
-                    : 'Seleccionar categoría'
-                  }
+                  {getCurrentCategoryName()}
                 </button>
                 {categoryId && (
                   <>
@@ -257,7 +276,9 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
                       onClick={() => {
                         setEditingCategoryId(categoryId)
                         setModalWasOpen(true)
-                        document.getElementById('modal_update_question' + question.question_id).close()
+                        document
+                          .getElementById('modal_update_question' + question.question_id)
+                          .close()
                         setTimeout(() => setShowCategorySelector(true), 100)
                       }}
                       title="Editar categoría"
@@ -359,7 +380,6 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
               </button>
             )}
           </div>
-          {formError && <div className="text-error text-sm mb-2">{formError}</div>}
           <button className="btn btn-secondary btn-outline" type="submit" disabled={loading}>
             <span className={loading ? 'loading' : ''}>{loading ? '' : 'Actualizar pregunta'}</span>
           </button>
@@ -369,10 +389,10 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
       {/* Category Selector Modal */}
       <CategoryFilter
         isOpen={showCategorySelector}
-        onClose={() => {
+        onClose={async () => {
           setShowCategorySelector(false)
           setEditingCategoryId(null)
-          // Reopen the main modal if it was open before
+          await fetchCategories()
           if (modalWasOpen) {
             setModalWasOpen(false)
             setTimeout(() => {
@@ -381,13 +401,11 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
           }
         }}
         selectedCategories={categoryId ? [categoryId] : []}
-        onCategorySelect={(categories) => {
+        onCategorySelect={async categories => {
           setCategoryId(categories[0] || null)
           setShowCategorySelector(false)
           setEditingCategoryId(null)
-          // Refresh categories to get updated names
-          fetchCategories()
-          // Reopen the main modal if it was open before
+          await fetchCategories()
           if (modalWasOpen) {
             setModalWasOpen(false)
             setTimeout(() => {

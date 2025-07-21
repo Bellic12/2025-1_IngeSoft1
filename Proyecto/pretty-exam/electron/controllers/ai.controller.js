@@ -260,7 +260,6 @@ IMPORTANTE:
     }
     // Obtener el examen con sus preguntas y opciones
     const exam = await ExamController.getById(examId)
-    console.log(exam)
     // Obtener el resultado con sus userAnswers
     const result = await ResultController.getById(resultId)
     if (!exam || !result) throw new Error('Exam or result not found')
@@ -292,7 +291,6 @@ IMPORTANTE:
       \n\nResumen del desempeño:\n- Respuestas correctas: ${correctCount}\n- Respuestas incorrectas: ${incorrectCount}\n\n${resumen}\n
       Por favor, da una retroalimentación breve y didáctica sobre el desempeño general del estudiante en este examen, sin explicar cada pregunta.
       Indica en qué aspectos puede mejorar y qué cosas hizo bien.`
-    console.log(prompt)
     // Llamar a Gemini
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
     const body = {

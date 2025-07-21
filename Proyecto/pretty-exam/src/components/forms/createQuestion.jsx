@@ -1,4 +1,4 @@
-import { Plus, Tag, Edit2 } from 'lucide-react'
+import { Tag, Edit2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
 import QuestionFactory from '../../factories/QuestionFactory'
@@ -12,7 +12,7 @@ const getInitialOptions = type =>
         { text: 'Falso', isCorrect: false },
       ]
 
-const CreateQuestion = ({ fetchQuestions, isInModal = false, onClose }) => {
+const CreateQuestion = ({ fetchQuestions, onClose }) => {
   const [text, setText] = useState('')
   const [type, setType] = useState('multiple_choice')
   const [categoryId, setCategoryId] = useState(null)
@@ -22,7 +22,7 @@ const CreateQuestion = ({ fetchQuestions, isInModal = false, onClose }) => {
   const [formError, setFormError] = useState('')
   const [showCategorySelector, setShowCategorySelector] = useState(false)
   const [editingCategoryId, setEditingCategoryId] = useState(null)
-  const [modalWasOpen, setModalWasOpen] = useState(false)
+  const [, setModalWasOpen] = useState(false)
 
   useEffect(() => {
     setOptions(getInitialOptions(type))
@@ -41,11 +41,6 @@ const CreateQuestion = ({ fetchQuestions, isInModal = false, onClose }) => {
   useEffect(() => {
     fetchCategories()
   }, [])
-
-  const handleOpenModal = () => {
-    resetForm()
-    document.getElementById('modal_create_question').showModal()
-  }
 
   const handleAddOption = () => {
     setOptions([...options, { text: '', isCorrect: false }])
@@ -89,15 +84,16 @@ const CreateQuestion = ({ fetchQuestions, isInModal = false, onClose }) => {
     setFormError('')
   }
 
+  const getCurrentCategoryName = () => {
+    if (!categoryId) return 'Sin categoría'
+    const category = categories.find(c => c.category_id === categoryId)
+    return category?.name || 'Categoría seleccionada'
+  }
+
   const handleSubmit = async event => {
     event.preventDefault()
     setFormError('')
-    
-    if (!categoryId) {
-      setFormError('Debes seleccionar una categoría')
-      return
-    }
-    
+
     try {
       const questionObj = QuestionFactory.createQuestion(type, {
         text,
@@ -109,12 +105,9 @@ const CreateQuestion = ({ fetchQuestions, isInModal = false, onClose }) => {
       })
       questionObj.validate()
       setLoading(true)
-      // eslint-disable-next-line
-      const createdQuestion = await window.questionAPI.create(questionObj.toAPIFormat())
+      await window.questionAPI.create(questionObj.toAPIFormat())
       resetForm()
-      if (!isInModal) {
-        document.getElementById('modal_create_question').close()
-      } else if (onClose) {
+      if (onClose) {
         onClose()
       }
       toast.success('Pregunta creada exitosamente')
@@ -125,9 +118,8 @@ const CreateQuestion = ({ fetchQuestions, isInModal = false, onClose }) => {
     }
   }
 
-  // Si está dentro de otro modal, renderizar solo el formulario
-  if (isInModal) {
-    return (
+  return (
+    <>
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         {formError && <div className="alert alert-error">{formError}</div>}
 
@@ -146,19 +138,66 @@ const CreateQuestion = ({ fetchQuestions, isInModal = false, onClose }) => {
           />
         </div>
 
-        {/* Tipo de pregunta */}
-        <div className="form-control flex flex-col gap-2">
-          <label className="label">
-            <span className="label-text">Tipo de pregunta</span>
-          </label>
-          <select
-            className="select select-bordered w-full"
-            value={type}
-            onChange={handleOnChangeType}
-          >
-            <option value="multiple_choice">Opción múltiple</option>
-            <option value="true_false">Verdadero/Falso</option>
-          </select>
+        {/* Type and Category row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Type */}
+          <div className="form-control flex flex-col gap-2">
+            <label className="label">
+              <span className="label-text">Tipo de pregunta</span>
+            </label>
+            <select
+              className="select select-bordered w-full"
+              value={type}
+              onChange={handleOnChangeType}
+            >
+              <option value="multiple_choice">Opción múltiple</option>
+              <option value="true_false">Verdadero/Falso</option>
+            </select>
+          </div>
+
+          {/* Category */}
+          <div className="form-control flex flex-col gap-2">
+            <label className="label">
+              <span className="label-text">Categoría</span>
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn btn-error text-white flex-1 justify-start"
+                onClick={() => {
+                  setModalWasOpen(true)
+                  setTimeout(() => setShowCategorySelector(true), 100)
+                }}
+              >
+                <Tag className="w-4 h-4" />
+                {getCurrentCategoryName()}
+              </button>
+              {categoryId && (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-square"
+                    onClick={() => {
+                      setEditingCategoryId(categoryId)
+                      setModalWasOpen(true)
+                      setTimeout(() => setShowCategorySelector(true), 100)
+                    }}
+                    title="Editar categoría"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-square"
+                    onClick={() => setCategoryId(null)}
+                    title="Limpiar categoría"
+                  >
+                    ✕
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Opciones */}
@@ -202,10 +241,11 @@ const CreateQuestion = ({ fetchQuestions, isInModal = false, onClose }) => {
                   readOnly
                 />
                 <input
-                  type="checkbox"
-                  className="checkbox"
+                  type="radio"
+                  name="true_false_option_modal"
+                  className="radio"
                   checked={!!options[0]?.isCorrect}
-                  onChange={e => handleOnSelectOption(e, 0)}
+                  onChange={() => handleOnSelectOption({ target: { checked: true } }, 0)}
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -216,10 +256,11 @@ const CreateQuestion = ({ fetchQuestions, isInModal = false, onClose }) => {
                   readOnly
                 />
                 <input
-                  type="checkbox"
-                  className="checkbox"
+                  type="radio"
+                  name="true_false_option_modal"
+                  className="radio"
                   checked={!!options[1]?.isCorrect}
-                  onChange={e => handleOnSelectOption(e, 1)}
+                  onChange={() => handleOnSelectOption({ target: { checked: true } }, 1)}
                 />
               </div>
             </>
@@ -239,223 +280,23 @@ const CreateQuestion = ({ fetchQuestions, isInModal = false, onClose }) => {
           )}
         </button>
       </form>
-    )
-  }
-
-  return (
-    <>
-      <button
-        className="btn btn-primary btn-circle btn-xl fixed bottom-4 right-4 z-50"
-        onClick={handleOpenModal}
-      >
-        <Plus />
-      </button>
-      <dialog id="modal_create_question" className="modal">
-        <form
-          method="dialog"
-          className="modal-box flex flex-col gap-4 bg-base-300"
-          onSubmit={handleSubmit}
-        >
-          <button
-            className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-            onClick={e => {
-              e.preventDefault()
-              if (!isInModal) {
-                document.getElementById('modal_create_question').close()
-              } else if (onClose) {
-                onClose()
-              }
-              resetForm()
-            }}
-          >
-            ✕
-          </button>
-          <h3 className="font-bold text-lg">Crear pregunta</h3>
-          {/* Question */}
-          <div className="form-control flex flex-col gap-2">
-            <label className="label">
-              <span className="label-text">Pregunta</span>
-            </label>
-            <input
-              type="text"
-              placeholder="Escribe la pregunta aquí"
-              className="input w-full"
-              value={text}
-              onChange={e => setText(e.target.value)}
-              required
-            />
-          </div>
-          {/* Type and Category row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Type */}
-            <div className="form-control flex flex-col gap-2">
-              <label className="label">
-                <span className="label-text">Tipo de pregunta</span>
-              </label>
-              <select
-                className="select select-bordered w-full"
-                value={type}
-                onChange={handleOnChangeType}
-              >
-                <option value="multiple_choice">Opción múltiple</option>
-                <option value="true_false">Verdadero/Falso</option>
-              </select>
-            </div>
-
-            {/* Category */}
-            <div className="form-control flex flex-col gap-2">
-              <label className="label">
-                <span className="label-text">Categoría</span>
-              </label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className={`btn flex-1 justify-start ${categoryId ? 'btn-outline' : 'btn-outline btn-error'}`}
-                  onClick={() => {
-                    setModalWasOpen(true)
-                    document.getElementById('modal_create_question').close()
-                    setTimeout(() => setShowCategorySelector(true), 100)
-                  }}
-                >
-                  <Tag className="w-4 h-4" />
-                  {categoryId 
-                    ? categories.find(c => c.category_id === categoryId)?.name || 'Categoría seleccionada'
-                    : 'Seleccionar categoría'
-                  }
-                </button>
-                {categoryId && (
-                  <>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-square"
-                      onClick={() => {
-                        setEditingCategoryId(categoryId)
-                        setModalWasOpen(true)
-                        document.getElementById('modal_create_question').close()
-                        setTimeout(() => setShowCategorySelector(true), 100)
-                      }}
-                      title="Editar categoría"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-square"
-                      onClick={() => setCategoryId(null)}
-                      title="Limpiar categoría"
-                    >
-                      ✕
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-          {/* Options */}
-          <div className="form-control flex flex-col gap-2">
-            <label className="label">
-              <span className="label-text">Opciones</span>
-            </label>
-            {type === 'multiple_choice' ? (
-              options.map((option, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder={`Opción ${index + 1}`}
-                    className="input w-full"
-                    value={option.text}
-                    onChange={e => handleOptionTextChange(e, index)}
-                    required
-                  />
-                  <input
-                    type="checkbox"
-                    className="checkbox"
-                    checked={!!option.isCorrect}
-                    onChange={e => handleOnSelectOption(e, index)}
-                  />
-                  <button
-                    className="btn btn-primary btn-sm btn-outline rounded-xl"
-                    type="button"
-                    onClick={() => handleRemoveOption(index)}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))
-            ) : (
-              <>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    className="input w-full bg-green-800"
-                    value="Verdadero"
-                    readOnly
-                  />
-                  <input
-                    type="radio"
-                    name="true_false_option"
-                    className="radio"
-                    checked={!!options[0]?.isCorrect}
-                    onChange={() => handleOnSelectOption({ target: { checked: true } }, 0)}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <input type="text" className="input w-full bg-red-800" value="Falso" readOnly />
-                  <input
-                    type="radio"
-                    name="true_false_option"
-                    className="radio"
-                    checked={!!options[1]?.isCorrect}
-                    onChange={() => handleOnSelectOption({ target: { checked: true } }, 1)}
-                  />
-                </div>
-              </>
-            )}
-            {type === 'multiple_choice' && (
-              <button
-                className="btn btn-primary btn-outline"
-                type="button"
-                onClick={handleAddOption}
-              >
-                Añadir opción
-              </button>
-            )}
-          </div>
-          {formError && <div className="text-error text-sm mb-2">{formError}</div>}
-          <button className="btn btn-secondary btn-outline" type="submit" disabled={loading}>
-            <span className={loading ? 'loading' : ''}>{loading ? '' : 'Crear pregunta'}</span>
-          </button>
-        </form>
-      </dialog>
 
       {/* Category Selector Modal */}
       <CategoryFilter
         isOpen={showCategorySelector}
-        onClose={() => {
+        onClose={async () => {
           setShowCategorySelector(false)
           setEditingCategoryId(null)
-          // Reopen the main modal if it was open before
-          if (modalWasOpen) {
-            setModalWasOpen(false)
-            setTimeout(() => {
-              document.getElementById('modal_create_question').showModal()
-            }, 100)
-          }
+          await fetchCategories()
+          setModalWasOpen(false)
         }}
         selectedCategories={categoryId ? [categoryId] : []}
-        onCategorySelect={(categories) => {
+        onCategorySelect={async categories => {
           setCategoryId(categories[0] || null)
           setShowCategorySelector(false)
           setEditingCategoryId(null)
-          // Refresh categories to get updated names
-          fetchCategories()
-          // Reopen the main modal if it was open before
-          if (modalWasOpen) {
-            setModalWasOpen(false)
-            setTimeout(() => {
-              document.getElementById('modal_create_question').showModal()
-            }, 100)
-          }
+          await fetchCategories()
+          setModalWasOpen(false)
         }}
         singleSelect={true}
         title="Seleccionar Categoría"

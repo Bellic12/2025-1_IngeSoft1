@@ -1,19 +1,19 @@
-import { Category, Question } from '../models/index'
+import { Category } from '../models/index'
 
 const CategoryController = {
   // Get all categories
   getAll: async () => {
     const categories = await Category.findAll({
-      order: [['name', 'ASC']]
+      order: [['name', 'ASC']],
     })
     return categories.map(c => c.get({ plain: true }))
   },
 
   // Create a new category
-  create: async (data) => {
+  create: async data => {
     try {
       const category = await Category.create({
-        name: data.name
+        name: data.name,
       })
       return category.get({ plain: true })
     } catch (error) {
@@ -31,11 +31,11 @@ const CategoryController = {
         { name: data.name },
         { where: { category_id: id } }
       )
-      
+
       if (updatedRowsCount === 0) {
         throw new Error('Category not found')
       }
-      
+
       const updatedCategory = await Category.findByPk(id)
       return updatedCategory.get({ plain: true })
     } catch (error) {
@@ -47,24 +47,15 @@ const CategoryController = {
   },
 
   // Delete a category
-  delete: async (id) => {
-    // Check if category has associated questions
-    const questionCount = await Question.count({
-      where: { category_id: id }
-    })
-    
-    if (questionCount > 0) {
-      throw new Error('Cannot delete category with associated questions')
-    }
-    
+  delete: async id => {
     const deletedRowsCount = await Category.destroy({
-      where: { category_id: id }
+      where: { category_id: id },
     })
-    
+
     if (deletedRowsCount === 0) {
       throw new Error('Category not found')
     }
-    
+
     return true
   },
 
@@ -74,10 +65,10 @@ const CategoryController = {
     if (excludeId) {
       whereClause.category_id = { [Category.sequelize.Op.ne]: excludeId }
     }
-    
+
     const category = await Category.findOne({ where: whereClause })
     return !!category
-  }
+  },
 }
 
 export default CategoryController
