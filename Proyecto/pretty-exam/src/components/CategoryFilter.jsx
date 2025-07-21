@@ -207,7 +207,7 @@ const CategoryFilter = ({
       className="modal modal-open"
       data-category-filter-modal="true"
       style={{
-        zIndex: 999999,
+        zIndex: 9999999,
         position: 'fixed',
         top: 0,
         left: 0,
@@ -218,7 +218,7 @@ const CategoryFilter = ({
       <div
         className="modal-box w-full max-w-md max-h-[80vh] flex flex-col"
         style={{
-          zIndex: 1000000,
+          zIndex: 10000000,
           position: 'relative',
         }}
       >
@@ -377,13 +377,13 @@ const CategoryFilter = ({
           </div>
         </div>
       </div>
-      <form method="dialog" className="modal-backdrop">
+      <form method="dialog" className="modal-backdrop" style={{ zIndex: 9999998 }}>
         <button onClick={onClose}>close</button>
       </form>
 
       {/* Delete Confirmation Modal */}
       {deletingCategory && (
-        <div className="modal modal-open" style={{ zIndex: 1000001 }}>
+        <div className="modal modal-open" style={{ zIndex: 10000001 }}>
           <div className="modal-box">
             <h3 className="font-bold text-lg text-error">Eliminar Categoría</h3>
             <div className="py-4">
