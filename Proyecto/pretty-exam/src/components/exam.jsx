@@ -47,7 +47,7 @@ const Exam = ({ exam, fetchExams }) => {
 
   return (
     <div
-      className="card bg-base-200 shadow-xl border border-base-300 hover:shadow-2xl transition-shadow duration-300 cursor-pointer"
+      className="card bg-base-300 shadow-xl border border-base-300 hover:shadow-2xl transition-shadow duration-300 cursor-pointer"
       onClick={handleExamClick}
     >
       <div className="card-body p-6">

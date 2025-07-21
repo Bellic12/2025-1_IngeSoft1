@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Search, Filter } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
+import { Filter } from 'lucide-react'
 import Question from '../components/question'
 import CreateQuestionModal from '../components/forms/createQuestionModal'
 import CategoryFilter from '../components/CategoryFilter'
@@ -11,6 +11,7 @@ const Questions = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategories, setSelectedCategories] = useState([])
   const [showCategoryFilter, setShowCategoryFilter] = useState(false)
+  const searchInputRef = useRef(null)
 
   const fetchQuestions = async (filters = {}) => {
     setLoading(true)
@@ -60,29 +61,62 @@ const Questions = () => {
     fetchQuestions()
   }, [])
 
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = event => {
+      if (event.ctrlKey && event.key === 'k') {
+        event.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
+
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-3xl font-bold">Banco de Preguntas</h1>
-        <p className="text-base-content/70 mt-2 text-lg">
-          Gestiona y organiza tus preguntas de examen
-        </p>
-      </div>
+      {/* Header with search - Fixed */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 flex-shrink-0">
+        <div className="flex flex-col">
+          <h1 className="text-3xl font-bold">Banco de Preguntas</h1>
+          <p className="text-base-content/70 text-lg mt-2">
+            Gestiona y organiza tus preguntas de examen
+          </p>
+        </div>
 
-      {/* Search and Filter Controls */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="flex gap-4 w-full sm:w-auto">
+        <div className="flex gap-4 w-full lg:w-auto">
           {/* Search bar */}
-          <div className="relative flex-1 sm:w-80">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <label className="input flex-1 sm:w-96">
+            <svg
+              className="h-[1em] opacity-50"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                strokeWidth="2.5"
+                fill="none"
+                stroke="currentColor"
+              >
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.3-4.3"></path>
+              </g>
+            </svg>
             <input
-              type="text"
+              type="search"
+              className="grow"
               placeholder="Buscar preguntas..."
-              className="input input-bordered w-full pl-10 bg-base-200"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
+              ref={searchInputRef}
             />
-          </div>
+            <kbd className="kbd kbd-sm">Ctrl</kbd>
+            <kbd className="kbd kbd-sm">K</kbd>
+          </label>
 
           {/* Filter button */}
           <button className="btn btn-outline" onClick={() => setShowCategoryFilter(true)}>
@@ -95,6 +129,7 @@ const Questions = () => {
         </div>
       </div>
 
+      {/* Content */}
       <div className="flex flex-col items-center justify-center w-full">
         {loading && <span className="loading loading-spinner loading-xl" />}
         {error && <p className="error">Error: {error}</p>}
@@ -105,7 +140,10 @@ const Questions = () => {
                 key={question.question_id}
                 question={question}
                 fetchQuestions={() =>
-                  fetchQuestions({ searchTerm: searchTerm.trim(), categoryIds: selectedCategories })
+                  fetchQuestions({
+                    searchTerm: searchTerm.trim(),
+                    categoryIds: selectedCategories,
+                  })
                 }
               />
             ))}
@@ -117,9 +155,13 @@ const Questions = () => {
           </div>
         )}
       </div>
+
       <CreateQuestionModal
         fetchQuestions={() =>
-          fetchQuestions({ searchTerm: searchTerm.trim(), categoryIds: selectedCategories })
+          fetchQuestions({
+            searchTerm: searchTerm.trim(),
+            categoryIds: selectedCategories,
+          })
         }
       />
 

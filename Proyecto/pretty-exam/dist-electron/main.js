@@ -294,7 +294,6 @@ const QuestionController = {
         type: sequelize.QueryTypes.RAW
       });
       await t.commit();
-      console.log(`Question ${id} updated successfully`);
       return true;
     } catch (err) {
       await t.rollback();
@@ -320,7 +319,6 @@ const QuestionController = {
     return await Question.destroy({ where: { question_id: id } });
   },
   search: async (filters = {}) => {
-    console.log("QuestionController.search called with filters:", filters);
     const { searchTerm, categoryIds } = filters;
     const normalizeSearchTerm = (text) => {
       if (!text || typeof text !== "string") {
@@ -417,7 +415,6 @@ const QuestionController = {
         ],
         order: [["question_id", "DESC"]]
       });
-      console.log(`Found ${questions.length} questions matching search criteria`);
       return questions.map((q) => q.get({ plain: true }));
     } catch (error) {
       console.error("Error in question search:", error);

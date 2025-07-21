@@ -39,7 +39,7 @@ const UpdateExam = ({ exam, fetchExams }) => {
       return false
     }
 
-    if (!duration.trim()) {
+    if (!duration) {
       toast.error('La duración del examen es obligatoria')
       return false
     }
@@ -60,7 +60,7 @@ const UpdateExam = ({ exam, fetchExams }) => {
       await window.examAPI.update(exam.exam_id, {
         name: name.trim(),
         description: description.trim(),
-        duration: duration.trim(),
+        duration_minutes: duration,
       })
 
       toast.success('Examen actualizado exitosamente')
