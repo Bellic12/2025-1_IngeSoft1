@@ -1019,13 +1019,49 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path$1.join(process.env.APP_ROOT
 let win = null;
 function createWindow() {
   win = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    minWidth: 800,
+    minHeight: 600,
+    center: true,
+    show: false,
+    // Don't show until ready-to-show
     icon: path$1.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
-      preload: path$1.join(__dirname, "preload.mjs")
-    }
+      preload: path$1.join(__dirname, "preload.mjs"),
+      nodeIntegration: false,
+      contextIsolation: true,
+      // Disable features that cause DevTools errors
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false
+    },
+    titleBarStyle: "default",
+    frame: true,
+    resizable: true,
+    maximizable: true,
+    autoHideMenuBar: false
+    // Keep menu bar visible
+  });
+  win.once("ready-to-show", () => {
+    win.show();
+    win.focus();
+  });
+  win.on("blur", () => {
+  });
+  win.on("focus", () => {
   });
   win.webContents.on("did-finish-load", () => {
     win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+  });
+  win.webContents.on("console-message", (event, level, message, line, sourceId) => {
+    const suppressedMessages = [
+      "Autofill.enable",
+      "wasn't found",
+      "protocol_client.js",
+      "Request Autofill.enable failed"
+    ];
+    if (suppressedMessages.some((suppressed) => message.includes(suppressed))) ;
   });
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
@@ -1042,6 +1078,11 @@ app.on("window-all-closed", () => {
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
+  } else {
+    if (win && !win.isDestroyed()) {
+      win.show();
+      win.focus();
+    }
   }
 });
 app.whenReady().then(async () => {
