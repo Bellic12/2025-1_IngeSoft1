@@ -10,11 +10,41 @@ ipcMain.handle('exams:getById', async (_, id) => {
 })
 
 ipcMain.handle('exams:create', async (_, data) => {
-  return await ExamController.create(data)
+  try {
+    return await ExamController.create(data)
+  } catch (error) {
+    console.error('Error creating exam:', error)
+
+    if (error.message === 'VALIDATION_ERROR') {
+      const validationError = new Error('Errores de validación')
+      validationError.type = 'VALIDATION_ERROR'
+      validationError.errors = error.fields
+      throw validationError
+    }
+
+    const createError = new Error('Error al crear el examen')
+    createError.type = 'CREATE_ERROR'
+    throw createError
+  }
 })
 
 ipcMain.handle('exams:update', async (_, id, data) => {
-  return await ExamController.update(id, data)
+  try {
+    return await ExamController.update(id, data)
+  } catch (error) {
+    console.error('Error updating exam:', error)
+
+    if (error.message === 'VALIDATION_ERROR') {
+      const validationError = new Error('Errores de validación')
+      validationError.type = 'VALIDATION_ERROR'
+      validationError.errors = error.fields
+      throw validationError
+    }
+
+    const updateError = new Error('Error al actualizar el examen')
+    updateError.type = 'UPDATE_ERROR'
+    throw updateError
+  }
 })
 
 ipcMain.handle('exams:delete', async (_, id) => {

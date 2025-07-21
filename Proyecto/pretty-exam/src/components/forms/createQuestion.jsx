@@ -113,7 +113,14 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
       toast.success('Pregunta creada exitosamente')
       fetchQuestions()
     } catch (error) {
-      setFormError(error.message)
+      console.error('Error creating question:', error)
+
+      // Manejar errores de validación del backend
+      if (error.type === 'VALIDATION_ERROR') {
+        setFormError(error.errors.join(', '))
+      } else {
+        setFormError(error.message || 'Error al crear la pregunta')
+      }
       setLoading(false)
     }
   }

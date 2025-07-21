@@ -172,6 +172,164 @@ Category.associate && Category.associate();
 Exam.associate && Exam.associate();
 Result.associate && Result.associate();
 UserAnswer.associate && UserAnswer.associate();
+const validateQuestion = (questionData) => {
+  const errors = [];
+  if (!questionData) {
+    return {
+      isValid: false,
+      errors: ["Los datos de la pregunta son requeridos"]
+    };
+  }
+  const { text, type, category_id: categoryId, options } = questionData;
+  if (!text || typeof text !== "string") {
+    errors.push("El texto de la pregunta es requerido");
+  } else {
+    const trimmedText = text.trim();
+    if (trimmedText.length === 0) {
+      errors.push("El texto de la pregunta no puede estar vacío");
+    } else if (trimmedText.length < 10) {
+      errors.push("El texto de la pregunta debe tener al menos 10 caracteres");
+    } else if (trimmedText.length > 1e3) {
+      errors.push("El texto de la pregunta no puede exceder 1000 caracteres");
+    }
+  }
+  const validTypes = ["multiple_choice", "true_false"];
+  if (!type || typeof type !== "string") {
+    errors.push("El tipo de pregunta es requerido");
+  } else if (!validTypes.includes(type)) {
+    errors.push('El tipo de pregunta debe ser "multiple_choice" o "true_false"');
+  }
+  if (categoryId !== null && categoryId !== void 0) {
+    if (!Number.isInteger(categoryId) || categoryId <= 0) {
+      errors.push("El ID de categoría debe ser un número entero positivo");
+    }
+  }
+  if (!options || !Array.isArray(options)) {
+    errors.push("Las opciones son requeridas y deben ser un array");
+  } else {
+    const optionErrors = validateOptions(options, type);
+    errors.push(...optionErrors);
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+const validateOptions = (options, type) => {
+  const errors = [];
+  if (options.length === 0) {
+    errors.push("Debe haber al menos una opción");
+    return errors;
+  }
+  if (type === "multiple_choice") {
+    if (options.length < 2) {
+      errors.push("Las preguntas de opción múltiple deben tener al menos 2 opciones");
+    } else if (options.length > 6) {
+      errors.push("Las preguntas de opción múltiple no pueden tener más de 6 opciones");
+    }
+  } else if (type === "true_false") {
+    if (options.length !== 2) {
+      errors.push("Las preguntas de verdadero/falso deben tener exactamente 2 opciones");
+    }
+  }
+  options.forEach((option, index) => {
+    if (!option || typeof option !== "object") {
+      errors.push(`La opción ${index + 1} debe ser un objeto válido`);
+      return;
+    }
+    const { text, isCorrect } = option;
+    if (!text || typeof text !== "string") {
+      errors.push(`El texto de la opción ${index + 1} es requerido`);
+    } else {
+      const trimmedText = text.trim();
+      if (trimmedText.length === 0) {
+        errors.push(`El texto de la opción ${index + 1} no puede estar vacío`);
+      } else if (trimmedText.length > 500) {
+        errors.push(`El texto de la opción ${index + 1} no puede exceder 500 caracteres`);
+      }
+    }
+    if (typeof isCorrect !== "boolean") {
+      errors.push(`La propiedad isCorrect de la opción ${index + 1} debe ser un booleano`);
+    }
+  });
+  const correctOptions = options.filter((option) => option.isCorrect === true);
+  if (correctOptions.length === 0) {
+    errors.push("Debe haber al menos una opción correcta");
+  }
+  if (type === "true_false" && correctOptions.length !== 1) {
+    errors.push("Las preguntas de verdadero/falso deben tener exactamente una opción correcta");
+  }
+  const optionTexts = options.map((opt) => {
+    var _a;
+    return (_a = opt.text) == null ? void 0 : _a.trim().toLowerCase();
+  }).filter(Boolean);
+  const uniqueTexts = new Set(optionTexts);
+  if (optionTexts.length !== uniqueTexts.size) {
+    errors.push("No puede haber opciones con el mismo texto");
+  }
+  return errors;
+};
+const validateQuestionUpdate = (updateData) => {
+  if (!updateData || Object.keys(updateData).length === 0) {
+    return {
+      isValid: false,
+      errors: ["Debe proporcionar al menos un campo para actualizar"]
+    };
+  }
+  const errors = [];
+  if (updateData.text !== void 0) {
+    if (!updateData.text || typeof updateData.text !== "string") {
+      errors.push("El texto de la pregunta es requerido");
+    } else {
+      const trimmedText = updateData.text.trim();
+      if (trimmedText.length === 0) {
+        errors.push("El texto de la pregunta no puede estar vacío");
+      } else if (trimmedText.length < 10) {
+        errors.push("El texto de la pregunta debe tener al menos 10 caracteres");
+      } else if (trimmedText.length > 1e3) {
+        errors.push("El texto de la pregunta no puede exceder 1000 caracteres");
+      }
+    }
+  }
+  if (updateData.type !== void 0) {
+    const validTypes = ["multiple_choice", "true_false"];
+    if (!updateData.type || typeof updateData.type !== "string") {
+      errors.push("El tipo de pregunta es requerido");
+    } else if (!validTypes.includes(updateData.type)) {
+      errors.push('El tipo de pregunta debe ser "multiple_choice" o "true_false"');
+    }
+  }
+  if (updateData.category_id !== void 0 && updateData.category_id !== null) {
+    if (!Number.isInteger(updateData.category_id) || updateData.category_id <= 0) {
+      errors.push("El ID de categoría debe ser un número entero positivo");
+    }
+  }
+  if (updateData.options !== void 0) {
+    if (!updateData.options || !Array.isArray(updateData.options)) {
+      errors.push("Las opciones deben ser un array");
+    } else {
+      const type = updateData.type || "multiple_choice";
+      const optionErrors = validateOptions(updateData.options, type);
+      errors.push(...optionErrors);
+    }
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+const validateQuestionId = (questionId) => {
+  const errors = [];
+  if (questionId === null || questionId === void 0) {
+    errors.push("El ID de la pregunta es requerido");
+  } else if (!Number.isInteger(Number(questionId)) || Number(questionId) <= 0) {
+    errors.push("El ID de la pregunta debe ser un número entero positivo");
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
 const QuestionController = {
   getAll: async () => {
     const questions = await Question.findAll({
@@ -196,6 +354,12 @@ const QuestionController = {
     return question.get({ plain: true });
   },
   create: async (data) => {
+    const validation = validateQuestion(data);
+    if (!validation.isValid) {
+      const error = new Error("VALIDATION_ERROR");
+      error.fields = validation.errors;
+      throw error;
+    }
     const t = await sequelize.transaction();
     try {
       const question = await Question.create(
@@ -220,11 +384,26 @@ const QuestionController = {
       return question;
     } catch (err) {
       await t.rollback();
+      if (err.message === "VALIDATION_ERROR") {
+        throw err;
+      }
       throw err;
     }
   },
   update: async (id, data) => {
     var _a;
+    const idValidation = validateQuestionId(id);
+    if (!idValidation.isValid) {
+      const error = new Error("VALIDATION_ERROR");
+      error.fields = idValidation.errors;
+      throw error;
+    }
+    const validation = validateQuestionUpdate(data);
+    if (!validation.isValid) {
+      const error = new Error("VALIDATION_ERROR");
+      error.fields = validation.errors;
+      throw error;
+    }
     const t = await sequelize.transaction();
     try {
       if (data.category_id) {
@@ -298,6 +477,9 @@ const QuestionController = {
     } catch (err) {
       await t.rollback();
       console.error("Error updating question:", err);
+      if (err.message === "VALIDATION_ERROR") {
+        throw err;
+      }
       if (err.name === "SequelizeForeignKeyConstraintError") {
         console.error("Foreign key constraint error details:", {
           sql: err.sql,
@@ -437,10 +619,36 @@ ipcMain.handle("questions:getAll", async () => {
   return await QuestionController.getAll();
 });
 ipcMain.handle("questions:create", async (_, data) => {
-  return await QuestionController.create(data);
+  try {
+    return await QuestionController.create(data);
+  } catch (error) {
+    console.error("Error creating question:", error);
+    if (error.message === "VALIDATION_ERROR") {
+      const validationError = new Error(error.fields[0]);
+      validationError.type = "VALIDATION_ERROR";
+      validationError.allErrors = error.fields;
+      throw validationError;
+    }
+    const createError = new Error("Error al crear la pregunta");
+    createError.type = "CREATE_ERROR";
+    throw createError;
+  }
 });
 ipcMain.handle("questions:update", async (_, id, data) => {
-  return await QuestionController.update(id, data);
+  try {
+    return await QuestionController.update(id, data);
+  } catch (error) {
+    console.error("Error updating question:", error);
+    if (error.message === "VALIDATION_ERROR") {
+      const validationError = new Error(error.fields[0]);
+      validationError.type = "VALIDATION_ERROR";
+      validationError.allErrors = error.fields;
+      throw validationError;
+    }
+    const updateError = new Error("Error al actualizar la pregunta");
+    updateError.type = "UPDATE_ERROR";
+    throw updateError;
+  }
 });
 ipcMain.handle("questions:delete", async (_, id) => {
   return await QuestionController.delete(id);
@@ -480,6 +688,87 @@ ipcMain.handle("options:update", async (_, id, data) => {
 ipcMain.handle("options:delete", async (_, id) => {
   return await OptionController.delete(id);
 });
+const validateCategory = (categoryData) => {
+  const errors = [];
+  if (!categoryData) {
+    return {
+      isValid: false,
+      errors: ["Los datos de la categoría son requeridos"]
+    };
+  }
+  const { name } = categoryData;
+  if (!name || typeof name !== "string") {
+    errors.push("El nombre de la categoría es requerido");
+  } else {
+    const trimmedName = name.trim();
+    if (trimmedName.length === 0) {
+      errors.push("El nombre de la categoría no puede estar vacío");
+    } else if (trimmedName.length < 2) {
+      errors.push("El nombre de la categoría debe tener al menos 2 caracteres");
+    } else if (trimmedName.length > 100) {
+      errors.push("El nombre de la categoría no puede exceder 100 caracteres");
+    }
+    const nameRegex = /^[a-zA-ZÀ-ÿ\u00f1\u00d1\s\d\-_().]+$/;
+    if (!nameRegex.test(trimmedName)) {
+      errors.push("El nombre de la categoría contiene caracteres no permitidos");
+    }
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+const validateCategoryUpdate = (updateData) => {
+  if (!updateData || Object.keys(updateData).length === 0) {
+    return {
+      isValid: false,
+      errors: ["Debe proporcionar al menos un campo para actualizar"]
+    };
+  }
+  if (updateData.name) {
+    return validateCategory(updateData);
+  }
+  return {
+    isValid: false,
+    errors: ["No hay campos válidos para actualizar"]
+  };
+};
+const validateCategoryId = (categoryId) => {
+  const errors = [];
+  if (categoryId === null || categoryId === void 0) {
+    errors.push("El ID de la categoría es requerido");
+  } else if (!Number.isInteger(Number(categoryId)) || Number(categoryId) <= 0) {
+    errors.push("El ID de la categoría debe ser un número entero positivo");
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+const validateCategoryNameUniqueness = (name, existingCategories = [], excludeId = null) => {
+  const errors = [];
+  if (!name || typeof name !== "string") {
+    errors.push("El nombre es requerido para validar unicidad");
+    return {
+      isValid: false,
+      errors
+    };
+  }
+  const trimmedName = name.trim().toLowerCase();
+  const duplicateCategory = existingCategories.find((category) => {
+    var _a;
+    const categoryName = (_a = category.name) == null ? void 0 : _a.trim().toLowerCase();
+    const isDifferentCategory = excludeId ? category.category_id !== excludeId : true;
+    return categoryName === trimmedName && isDifferentCategory;
+  });
+  if (duplicateCategory) {
+    errors.push("Ya existe una categoría con este nombre");
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
 const CategoryController = {
   // Get all categories
   getAll: async () => {
@@ -490,9 +779,25 @@ const CategoryController = {
   },
   // Create a new category
   create: async (data) => {
+    const validation = validateCategory(data);
+    if (!validation.isValid) {
+      const error = new Error("VALIDATION_ERROR");
+      error.fields = validation.errors;
+      throw error;
+    }
+    const existingCategories = await Category.findAll();
+    const uniquenessValidation = validateCategoryNameUniqueness(
+      data.name,
+      existingCategories.map((cat) => cat.get({ plain: true }))
+    );
+    if (!uniquenessValidation.isValid) {
+      const error = new Error("VALIDATION_ERROR");
+      error.fields = uniquenessValidation.errors;
+      throw error;
+    }
     try {
       const category = await Category.create({
-        name: data.name
+        name: data.name.trim()
       });
       return category.get({ plain: true });
     } catch (error) {
@@ -504,9 +809,35 @@ const CategoryController = {
   },
   // Update an existing category
   update: async (id, data) => {
+    const idValidation = validateCategoryId(id);
+    if (!idValidation.isValid) {
+      const error = new Error("VALIDATION_ERROR");
+      error.fields = idValidation.errors;
+      throw error;
+    }
+    const validation = validateCategoryUpdate(data);
+    if (!validation.isValid) {
+      const error = new Error("VALIDATION_ERROR");
+      error.fields = validation.errors;
+      throw error;
+    }
+    const existingCategories = await Category.findAll({
+      where: {
+        category_id: { [Category.sequelize.Op.ne]: id }
+      }
+    });
+    const uniquenessValidation = validateCategoryNameUniqueness(
+      data.name,
+      existingCategories.map((cat) => cat.get({ plain: true }))
+    );
+    if (!uniquenessValidation.isValid) {
+      const error = new Error("VALIDATION_ERROR");
+      error.fields = uniquenessValidation.errors;
+      throw error;
+    }
     try {
       const [updatedRowsCount] = await Category.update(
-        { name: data.name },
+        { name: data.name.trim() },
         { where: { category_id: id } }
       );
       if (updatedRowsCount === 0) {
@@ -515,6 +846,9 @@ const CategoryController = {
       const updatedCategory = await Category.findByPk(id);
       return updatedCategory.get({ plain: true });
     } catch (error) {
+      if (error.message === "VALIDATION_ERROR") {
+        throw error;
+      }
       if (error.name === "SequelizeUniqueConstraintError") {
         throw new Error("Category name already exists");
       }
@@ -545,10 +879,36 @@ ipcMain.handle("categories:getAll", async () => {
   return await CategoryController.getAll();
 });
 ipcMain.handle("categories:create", async (_, data) => {
-  return await CategoryController.create(data);
+  try {
+    return await CategoryController.create(data);
+  } catch (error) {
+    console.error("Error creating category:", error);
+    if (error.message === "VALIDATION_ERROR") {
+      const validationError = new Error(error.fields[0]);
+      validationError.type = "VALIDATION_ERROR";
+      validationError.allErrors = error.fields;
+      throw validationError;
+    }
+    const createError = new Error("Error al crear la categoría");
+    createError.type = "CREATE_ERROR";
+    throw createError;
+  }
 });
 ipcMain.handle("categories:update", async (_, id, data) => {
-  return await CategoryController.update(id, data);
+  try {
+    return await CategoryController.update(id, data);
+  } catch (error) {
+    console.error("Error updating category:", error);
+    if (error.message === "VALIDATION_ERROR") {
+      const validationError = new Error(error.fields[0]);
+      validationError.type = "VALIDATION_ERROR";
+      validationError.allErrors = error.fields;
+      throw validationError;
+    }
+    const updateError = new Error("Error al actualizar la categoría");
+    updateError.type = "UPDATE_ERROR";
+    throw updateError;
+  }
 });
 ipcMain.handle("categories:delete", async (_, id) => {
   return await CategoryController.delete(id);
@@ -556,6 +916,106 @@ ipcMain.handle("categories:delete", async (_, id) => {
 ipcMain.handle("categories:nameExists", async (_, name, excludeId = null) => {
   return await CategoryController.nameExists(name, excludeId);
 });
+const validateExam = (examData) => {
+  const errors = [];
+  if (!examData) {
+    return {
+      isValid: false,
+      errors: ["Los datos del examen son requeridos"]
+    };
+  }
+  const { name, description, duration_minutes: durationMinutes } = examData;
+  if (!name || typeof name !== "string") {
+    errors.push("El nombre del examen es requerido");
+  } else {
+    const trimmedName = name.trim();
+    if (trimmedName.length === 0) {
+      errors.push("El nombre del examen no puede estar vacío");
+    } else if (trimmedName.length < 3) {
+      errors.push("El nombre del examen debe tener al menos 3 caracteres");
+    } else if (trimmedName.length > 200) {
+      errors.push("El nombre del examen no puede exceder 200 caracteres");
+    }
+  }
+  if (description !== null && description !== void 0) {
+    if (typeof description !== "string") {
+      errors.push("La descripción debe ser una cadena de texto");
+    } else if (description.trim().length > 1e3) {
+      errors.push("La descripción no puede exceder 1000 caracteres");
+    }
+  }
+  if (durationMinutes !== null && durationMinutes !== void 0) {
+    const duration = Number(durationMinutes);
+    if (!Number.isInteger(duration)) {
+      errors.push("La duración debe ser un número entero");
+    } else if (duration <= 0) {
+      errors.push("La duración debe ser mayor a 0 minutos");
+    } else if (duration > 1440) {
+      errors.push("La duración no puede exceder 1440 minutos (24 horas)");
+    } else if (duration < 5) {
+      errors.push("La duración debe ser de al menos 5 minutos");
+    }
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+const validateExamUpdate = (updateData) => {
+  if (!updateData || Object.keys(updateData).length === 0) {
+    return {
+      isValid: false,
+      errors: ["Debe proporcionar al menos un campo para actualizar"]
+    };
+  }
+  const validationData = {
+    name: updateData.name || "Examen temporal",
+    // Valor por defecto para validación
+    description: updateData.description,
+    duration_minutes: updateData.duration_minutes
+  };
+  if (!updateData.name) {
+    const partialErrors = [];
+    if (updateData.description !== void 0) {
+      if (updateData.description !== null && typeof updateData.description !== "string") {
+        partialErrors.push("La descripción debe ser una cadena de texto");
+      } else if (updateData.description && updateData.description.trim().length > 1e3) {
+        partialErrors.push("La descripción no puede exceder 1000 caracteres");
+      }
+    }
+    if (updateData.duration_minutes !== void 0) {
+      if (updateData.duration_minutes !== null) {
+        const duration = Number(updateData.duration_minutes);
+        if (!Number.isInteger(duration)) {
+          partialErrors.push("La duración debe ser un número entero");
+        } else if (duration <= 0) {
+          partialErrors.push("La duración debe ser mayor a 0 minutos");
+        } else if (duration > 1440) {
+          partialErrors.push("La duración no puede exceder 1440 minutos (24 horas)");
+        } else if (duration < 5) {
+          partialErrors.push("La duración debe ser de al menos 5 minutos");
+        }
+      }
+    }
+    return {
+      isValid: partialErrors.length === 0,
+      errors: partialErrors
+    };
+  }
+  return validateExam(validationData);
+};
+const validateExamId = (examId) => {
+  const errors = [];
+  if (examId === null || examId === void 0) {
+    errors.push("El ID del examen es requerido");
+  } else if (!Number.isInteger(Number(examId)) || Number(examId) <= 0) {
+    errors.push("El ID del examen debe ser un número entero positivo");
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
 const ExamController = {
   // Get all exams with associated questions
   getAll: async () => {
@@ -579,6 +1039,12 @@ const ExamController = {
   },
   // Create a new exam with associated questions
   create: async (data) => {
+    const validation = validateExam(data);
+    if (!validation.isValid) {
+      const error = new Error("VALIDATION_ERROR");
+      error.fields = validation.errors;
+      throw error;
+    }
     const t = await sequelize.transaction();
     try {
       const exam = await Exam.create(
@@ -596,11 +1062,26 @@ const ExamController = {
       return exam;
     } catch (err) {
       await t.rollback();
+      if (err.message === "VALIDATION_ERROR") {
+        throw err;
+      }
       throw err;
     }
   },
   // Update an existing exam and its associated questions
   update: async (id, data) => {
+    const idValidation = validateExamId(id);
+    if (!idValidation.isValid) {
+      const error = new Error("VALIDATION_ERROR");
+      error.fields = idValidation.errors;
+      throw error;
+    }
+    const validation = validateExamUpdate(data);
+    if (!validation.isValid) {
+      const error = new Error("VALIDATION_ERROR");
+      error.fields = validation.errors;
+      throw error;
+    }
     const t = await sequelize.transaction();
     try {
       await Exam.update(
@@ -619,6 +1100,9 @@ const ExamController = {
       return { message: "Exam updated successfully" };
     } catch (err) {
       await t.rollback();
+      if (err.message === "VALIDATION_ERROR") {
+        throw err;
+      }
       throw err;
     }
   },
@@ -760,10 +1244,36 @@ ipcMain.handle("exams:getById", async (_, id) => {
   return await ExamController.getById(id);
 });
 ipcMain.handle("exams:create", async (_, data) => {
-  return await ExamController.create(data);
+  try {
+    return await ExamController.create(data);
+  } catch (error) {
+    console.error("Error creating exam:", error);
+    if (error.message === "VALIDATION_ERROR") {
+      const validationError = new Error(error.fields[0]);
+      validationError.type = "VALIDATION_ERROR";
+      validationError.allErrors = error.fields;
+      throw validationError;
+    }
+    const createError = new Error("Error al crear el examen");
+    createError.type = "CREATE_ERROR";
+    throw createError;
+  }
 });
 ipcMain.handle("exams:update", async (_, id, data) => {
-  return await ExamController.update(id, data);
+  try {
+    return await ExamController.update(id, data);
+  } catch (error) {
+    console.error("Error updating exam:", error);
+    if (error.message === "VALIDATION_ERROR") {
+      const validationError = new Error(error.fields[0]);
+      validationError.type = "VALIDATION_ERROR";
+      validationError.allErrors = error.fields;
+      throw validationError;
+    }
+    const updateError = new Error("Error al actualizar el examen");
+    updateError.type = "UPDATE_ERROR";
+    throw updateError;
+  }
 });
 ipcMain.handle("exams:delete", async (_, id) => {
   return await ExamController.delete(id);

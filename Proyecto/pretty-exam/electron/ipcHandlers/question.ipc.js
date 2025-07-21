@@ -6,11 +6,41 @@ ipcMain.handle('questions:getAll', async () => {
 })
 
 ipcMain.handle('questions:create', async (_, data) => {
-  return await QuestionController.create(data)
+  try {
+    return await QuestionController.create(data)
+  } catch (error) {
+    console.error('Error creating question:', error)
+
+    if (error.message === 'VALIDATION_ERROR') {
+      const validationError = new Error('Errores de validación')
+      validationError.type = 'VALIDATION_ERROR'
+      validationError.errors = error.fields
+      throw validationError
+    }
+
+    const createError = new Error('Error al crear la pregunta')
+    createError.type = 'CREATE_ERROR'
+    throw createError
+  }
 })
 
 ipcMain.handle('questions:update', async (_, id, data) => {
-  return await QuestionController.update(id, data)
+  try {
+    return await QuestionController.update(id, data)
+  } catch (error) {
+    console.error('Error updating question:', error)
+
+    if (error.message === 'VALIDATION_ERROR') {
+      const validationError = new Error('Errores de validación')
+      validationError.type = 'VALIDATION_ERROR'
+      validationError.errors = error.fields
+      throw validationError
+    }
+
+    const updateError = new Error('Error al actualizar la pregunta')
+    updateError.type = 'UPDATE_ERROR'
+    throw updateError
+  }
 })
 
 ipcMain.handle('questions:delete', async (_, id) => {

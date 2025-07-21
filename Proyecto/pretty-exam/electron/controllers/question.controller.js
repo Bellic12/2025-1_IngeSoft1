@@ -1,6 +1,11 @@
 import sequelize from '../config/database'
 import { Question, Option, Category } from '../models/index'
 import { Op } from 'sequelize'
+import {
+  validateQuestion,
+  validateQuestionUpdate,
+  validateQuestionId,
+} from '../validations/question.validation.js'
 
 const QuestionController = {
   getAll: async () => {
@@ -28,6 +33,14 @@ const QuestionController = {
   },
 
   create: async data => {
+    // Validar datos de entrada
+    const validation = validateQuestion(data)
+    if (!validation.isValid) {
+      const error = new Error('VALIDATION_ERROR')
+      error.fields = validation.errors
+      throw error
+    }
+
     const t = await sequelize.transaction()
     try {
       const question = await Question.create(
@@ -54,11 +67,33 @@ const QuestionController = {
       return question
     } catch (err) {
       await t.rollback()
+
+      // Si es un error de validación, reenviarlo
+      if (err.message === 'VALIDATION_ERROR') {
+        throw err
+      }
+
       throw err
     }
   },
 
   update: async (id, data) => {
+    // Validar ID
+    const idValidation = validateQuestionId(id)
+    if (!idValidation.isValid) {
+      const error = new Error('VALIDATION_ERROR')
+      error.fields = idValidation.errors
+      throw error
+    }
+
+    // Validar datos de actualización
+    const validation = validateQuestionUpdate(data)
+    if (!validation.isValid) {
+      const error = new Error('VALIDATION_ERROR')
+      error.fields = validation.errors
+      throw error
+    }
+
     const t = await sequelize.transaction()
     try {
       if (data.category_id) {
@@ -141,6 +176,11 @@ const QuestionController = {
     } catch (err) {
       await t.rollback()
       console.error('Error updating question:', err)
+
+      // Si es un error de validación, reenviarlo
+      if (err.message === 'VALIDATION_ERROR') {
+        throw err
+      }
 
       if (err.name === 'SequelizeForeignKeyConstraintError') {
         console.error('Foreign key constraint error details:', {

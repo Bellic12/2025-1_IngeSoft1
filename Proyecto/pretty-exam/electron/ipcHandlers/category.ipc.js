@@ -8,12 +8,42 @@ ipcMain.handle('categories:getAll', async () => {
 
 // Create a new category
 ipcMain.handle('categories:create', async (_, data) => {
-  return await CategoryController.create(data)
+  try {
+    return await CategoryController.create(data)
+  } catch (error) {
+    console.error('Error creating category:', error)
+
+    if (error.message === 'VALIDATION_ERROR') {
+      const validationError = new Error('Errores de validación')
+      validationError.type = 'VALIDATION_ERROR'
+      validationError.errors = error.fields
+      throw validationError
+    }
+
+    const createError = new Error('Error al crear la categoría')
+    createError.type = 'CREATE_ERROR'
+    throw createError
+  }
 })
 
 // Update an existing category
 ipcMain.handle('categories:update', async (_, id, data) => {
-  return await CategoryController.update(id, data)
+  try {
+    return await CategoryController.update(id, data)
+  } catch (error) {
+    console.error('Error updating category:', error)
+
+    if (error.message === 'VALIDATION_ERROR') {
+      const validationError = new Error('Errores de validación')
+      validationError.type = 'VALIDATION_ERROR'
+      validationError.errors = error.fields
+      throw validationError
+    }
+
+    const updateError = new Error('Error al actualizar la categoría')
+    updateError.type = 'UPDATE_ERROR'
+    throw updateError
+  }
 })
 
 // Delete a category

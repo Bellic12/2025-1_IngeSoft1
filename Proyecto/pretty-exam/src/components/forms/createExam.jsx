@@ -47,7 +47,13 @@ const CreateExam = ({ fetchExams }) => {
       }
     } catch (error) {
       console.error('Error al crear el examen:', error)
-      toast.error('Error al crear el examen')
+
+      // Manejar errores de validación del backend
+      if (error.type === 'VALIDATION_ERROR') {
+        toast.error(error.errors.join(', '))
+      } else {
+        toast.error('Error al crear el examen')
+      }
       setLoading(false)
     }
   }

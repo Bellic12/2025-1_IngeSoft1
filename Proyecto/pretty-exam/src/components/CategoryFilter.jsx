@@ -114,8 +114,14 @@ const CategoryFilter = ({
       setEditingName('')
       setError('')
     } catch (err) {
-      setError('Error al actualizar categoría')
-      console.error(err)
+      console.error('Error updating category:', err)
+
+      // Manejar errores de validación del backend
+      if (err.type === 'VALIDATION_ERROR') {
+        setError(err.errors.join(', '))
+      } else {
+        setError('Error al actualizar categoría')
+      }
     }
   }
 
@@ -138,8 +144,14 @@ const CategoryFilter = ({
       setNewCategoryName('')
       setError('')
     } catch (err) {
-      setError('Error al crear categoría')
-      console.error(err)
+      console.error('Error creating category:', err)
+
+      // Manejar errores de validación del backend
+      if (err.type === 'VALIDATION_ERROR') {
+        setError(err.errors.join(', '))
+      } else {
+        setError('Error al crear categoría')
+      }
     }
   }
 

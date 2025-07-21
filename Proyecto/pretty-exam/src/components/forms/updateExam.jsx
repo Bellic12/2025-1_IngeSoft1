@@ -68,7 +68,13 @@ const UpdateExam = ({ exam, fetchExams }) => {
       handleCloseModal()
     } catch (error) {
       console.error('Error al actualizar el examen:', error)
-      toast.error('Error al actualizar el examen')
+
+      // Manejar errores de validación del backend
+      if (error.type === 'VALIDATION_ERROR') {
+        toast.error(error.errors.join(', '))
+      } else {
+        toast.error('Error al actualizar el examen')
+      }
     }
     setLoading(false)
   }

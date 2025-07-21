@@ -1,5 +1,6 @@
 import sequelize from '../config/database'
 import { Exam, Question, Category, Option } from '../models/index'
+import { validateExam, validateExamUpdate, validateExamId } from '../validations/exam.validation.js'
 
 const ExamController = {
   // Get all exams with associated questions
@@ -26,6 +27,14 @@ const ExamController = {
 
   // Create a new exam with associated questions
   create: async data => {
+    // Validar datos de entrada
+    const validation = validateExam(data)
+    if (!validation.isValid) {
+      const error = new Error('VALIDATION_ERROR')
+      error.fields = validation.errors
+      throw error
+    }
+
     const t = await sequelize.transaction()
     try {
       const exam = await Exam.create(
@@ -45,12 +54,34 @@ const ExamController = {
       return exam
     } catch (err) {
       await t.rollback()
+
+      // Si es un error de validación, reenviarlo
+      if (err.message === 'VALIDATION_ERROR') {
+        throw err
+      }
+
       throw err
     }
   },
 
   // Update an existing exam and its associated questions
   update: async (id, data) => {
+    // Validar ID
+    const idValidation = validateExamId(id)
+    if (!idValidation.isValid) {
+      const error = new Error('VALIDATION_ERROR')
+      error.fields = idValidation.errors
+      throw error
+    }
+
+    // Validar datos de actualización
+    const validation = validateExamUpdate(data)
+    if (!validation.isValid) {
+      const error = new Error('VALIDATION_ERROR')
+      error.fields = validation.errors
+      throw error
+    }
+
     const t = await sequelize.transaction()
     try {
       await Exam.update(
@@ -71,6 +102,12 @@ const ExamController = {
       return { message: 'Exam updated successfully' }
     } catch (err) {
       await t.rollback()
+
+      // Si es un error de validación, reenviarlo
+      if (err.message === 'VALIDATION_ERROR') {
+        throw err
+      }
+
       throw err
     }
   },

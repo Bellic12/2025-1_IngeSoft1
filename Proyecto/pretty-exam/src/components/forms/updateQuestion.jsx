@@ -160,16 +160,23 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
       // Handle specific error types with user-friendly messages
       let userMessage = 'Error al actualizar la pregunta'
 
-      if (error.message === 'CATEGORY_NOT_FOUND') {
+      // Manejar errores de validación del backend
+      if (error.type === 'VALIDATION_ERROR') {
+        userMessage = error.errors.join(', ')
+        setFormError(userMessage)
+      } else if (error.message === 'CATEGORY_NOT_FOUND') {
         userMessage = 'La categoría seleccionada no existe. Por favor, selecciona otra categoría.'
+        setFormError('')
       } else if (error.message === 'QUESTION_NOT_FOUND') {
         userMessage = 'La pregunta no fue encontrada. Por favor, recarga la página.'
+        setFormError('')
       } else if (error.message === 'UPDATE_FAILED') {
         userMessage = 'No se pudo actualizar la pregunta. Inténtalo de nuevo.'
+        setFormError('')
+      } else {
+        setFormError('')
       }
 
-      // Don't show technical errors in the form, only in console
-      setFormError('')
       toast.error(userMessage)
       setLoading(false)
     }
