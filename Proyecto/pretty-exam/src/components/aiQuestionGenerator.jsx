@@ -23,6 +23,7 @@ import {
 import pdfToText from 'react-pdftotext'
 import EditAIQuestion from './forms/EditAIQuestion'
 import QuestionFactory from '../factories/QuestionFactory'
+import { toast } from 'react-toastify'
 
 const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
   const [currentStep, setCurrentStep] = useState(1)
@@ -30,7 +31,7 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
   const [extractedText, setExtractedText] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [pdfError, setPdfError] = useState('')
-  const [pdfPages, setPdfPages] = useState(0)
+  const [, setPdfPages] = useState(0)
   const [wordLimitError, setWordLimitError] = useState('')
 
   const [questionConfig, setQuestionConfig] = useState({
@@ -146,7 +147,7 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
           if (question.category && question.category !== 'General') {
             // Verificar si la categoría ya existe en la base de datos
             const categoryExists = await window.categoryAPI.nameExists(question.category)
-            
+
             if (!categoryExists) {
               // Crear la categoría si no existe
               try {
@@ -197,9 +198,8 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
           // Crear la pregunta en la base de datos
           const createdQuestion = await window.questionAPI.create(questionObj.toAPIFormat())
           savedQuestions.push(createdQuestion)
-          console.log(`Pregunta guardada: ${question.text}`)
         } catch (questionError) {
-          console.error('Error guardando pregunta individual:', questionError)
+          toast.error(`Error guardando pregunta: ${question.text}`)
           // Continuar con las demás preguntas en caso de error
         }
       }
@@ -215,9 +215,9 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
 
       // Cerrar el modal
       handleClose()
+      toast.success('Preguntas guardadas exitosamente')
     } catch (error) {
-      console.error('Error general guardando preguntas:', error)
-      alert('Error al guardar las preguntas. Por favor, intenta nuevamente.')
+      toast.error('Error al guardar las preguntas. Por favor, intenta nuevamente.')
     } finally {
       setIsSaving(false)
     }
@@ -284,9 +284,9 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
   return (
     <>
       <div className="modal modal-open">
-        <div className="modal-box w-11/12 max-w-6xl h-5/6 max-h-none">
+        <div className="modal-box w-11/12 max-w-6xl max-h-[90vh] p-0 overflow-hidden flex flex-col">
           {/* Header con colores azul oscuro/morado */}
-          <div className="bg-gradient-to-r from-blue-900 to-purple-900 text-white p-6 -m-6 mb-6 rounded-t-lg">
+          <div className="bg-gradient-to-r from-blue-900 to-purple-900 text-white p-6 rounded-t-lg flex-shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Brain className="w-8 h-8" />
@@ -328,7 +328,7 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
           </div>
 
           {/* Content */}
-          <div className="overflow-y-auto max-h-96">
+          <div className="flex-1 overflow-y-auto p-6">
             {/* Step 1: Mostrar texto de prueba */}
             {currentStep === 1 && (
               <div className="space-y-6">
@@ -793,48 +793,48 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
           </div>
 
           {/* Footer */}
-          <div className="modal-action">
-            <button
-              onClick={prevStep}
-              className="btn btn-outline"
-              disabled={currentStep === 1 || isProcessing || isGenerating || isSaving}
-            >
-              <ChevronLeft className="w-4 h-4 mr-1" />
-              Anterior
-            </button>
+          <div className="flex-shrink-0 border-t border-base-300 p-4">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={prevStep}
+                className="btn btn-outline"
+                disabled={currentStep === 1 || isProcessing || isGenerating || isSaving}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Anterior
+              </button>
 
-            <div className="flex-1 text-center">
               <span className="text-sm text-base-content/70">
                 Paso {currentStep} de {steps.length}
               </span>
-            </div>
 
-            <button
-              onClick={nextStep}
-              className="btn btn-primary"
-              disabled={
-                currentStep === 5 ||
-                (currentStep === 1 && !(extractedText.trim().length > 0 || pdfFile)) ||
-                (currentStep === 2 &&
-                  questionConfig.multipleChoice + questionConfig.trueFalse === 0) ||
-                (currentStep === 3 && generatedQuestions.length === 0) ||
-                isProcessing ||
-                isGenerating ||
-                isSaving
-              }
-            >
-              {isProcessing && currentStep === 1 && pdfFile ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="loading loading-spinner loading-sm"></span>
-                  Procesando PDF...
-                </span>
-              ) : (
-                <>
-                  Siguiente
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </>
-              )}
-            </button>
+              <button
+                onClick={nextStep}
+                className="btn btn-primary"
+                disabled={
+                  currentStep === 5 ||
+                  (currentStep === 1 && !(extractedText.trim().length > 0 || pdfFile)) ||
+                  (currentStep === 2 &&
+                    questionConfig.multipleChoice + questionConfig.trueFalse === 0) ||
+                  (currentStep === 3 && generatedQuestions.length === 0) ||
+                  isProcessing ||
+                  isGenerating ||
+                  isSaving
+                }
+              >
+                {isProcessing && currentStep === 1 && pdfFile ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Procesando PDF...
+                  </span>
+                ) : (
+                  <>
+                    Siguiente
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

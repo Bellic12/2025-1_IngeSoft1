@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { Filter } from 'lucide-react'
-import { Search, Filter, Wand2 } from 'lucide-react'
+import { Filter, Wand2 } from 'lucide-react'
 import Question from '../components/question'
 import CreateQuestionModal from '../components/forms/createQuestionModal'
 import CategoryFilter from '../components/CategoryFilter'

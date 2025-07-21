@@ -29,6 +29,14 @@ const QuestionCard = ({ question, fetchQuestions }) => {
               <div className="badge badge-outline">{question.category?.name || 'General'}</div>
             </div>
             <div className="flex gap-2">
+              {/* Icono de IA generada */}
+              {question.source === 'generated' && (
+                <div className="tooltip tooltip-left" data-tip="Generado por IA">
+                  <div className="bg-primary/20 p-2 rounded-full">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                  </div>
+                </div>
+              )}
               <ViewQuestion question={question} fetchQuestions={fetchQuestions} />
               <UpdateQuestion question={question} fetchQuestions={fetchQuestions} />
               <DeleteQuestion question={question} fetchQuestions={fetchQuestions} />
@@ -36,14 +44,6 @@ const QuestionCard = ({ question, fetchQuestions }) => {
           </div>
         </div>
       </div>
-      {/* Icono de IA generada */}
-      {question.source === 'generated' && (
-        <div className="absolute bottom-3 right-3 tooltip tooltip-left" data-tip="Generado por IA">
-          <div className="bg-primary/20 p-2 rounded-full">
-            <Sparkles className="w-4 h-4 text-primary" />
-          </div>
-        </div>
-      )}
     </div>
   )
 }

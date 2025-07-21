@@ -1,41 +1,43 @@
-import { ipcMain as s, app as h, BrowserWindow as O } from "electron";
-import { fileURLToPath as D } from "node:url";
-import { Sequelize as B, DataTypes as r, Op as C } from "sequelize";
-import L, { join as S } from "path";
-import E from "node:path";
-const G = L.dirname(D(import.meta.url)), n = new B({
+import { ipcMain, app, BrowserWindow } from "electron";
+import { fileURLToPath } from "node:url";
+import { Sequelize, DataTypes, Op } from "sequelize";
+import path, { join } from "path";
+import path$1 from "node:path";
+const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
+const sequelize = new Sequelize({
   dialect: "sqlite",
-  storage: S(G, "..", "pretty_exam.db"),
-  logging: !1
-}), u = n.define(
+  storage: join(__dirname$1, "..", "pretty_exam.db"),
+  logging: false
+});
+const Category = sequelize.define(
   "Category",
   {
-    category_id: { type: r.INTEGER, primaryKey: !0, autoIncrement: !0 },
-    name: { type: r.STRING, allowNull: !1 },
+    category_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    name: { type: DataTypes.STRING, allowNull: false },
     created_at: {
-      type: r.DATE,
-      defaultValue: r.NOW,
-      allowNull: !1
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+      allowNull: false
     }
   },
   {
     tableName: "Category",
-    timestamps: !1
+    timestamps: false
   }
 );
-u.associate = () => {
-  u.hasMany(i, {
+Category.associate = () => {
+  Category.hasMany(Question, {
     foreignKey: "category_id",
     as: "questions"
   });
 };
-const c = n.define(
+const Option = sequelize.define(
   "Option",
   {
-    option_id: { type: r.INTEGER, primaryKey: !0, autoIncrement: !0 },
-    text: { type: r.TEXT, allowNull: !1 },
-    is_correct: { type: r.BOOLEAN, defaultValue: !1 },
-    question_id: { type: r.INTEGER, allowNull: !1 }
+    option_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    text: { type: DataTypes.TEXT, allowNull: false },
+    is_correct: { type: DataTypes.BOOLEAN, defaultValue: false },
+    question_id: { type: DataTypes.INTEGER, allowNull: false }
     /** created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
@@ -49,50 +51,43 @@ const c = n.define(
   },
   {
     tableName: "Option",
-    timestamps: !1
+    timestamps: false
   }
 );
-c.associate = () => {
-  c.belongsTo(i, {
+Option.associate = () => {
+  Option.belongsTo(Question, {
     foreignKey: "question_id",
     as: "question"
   });
 };
-const d = n.define(
+const Exam = sequelize.define(
   "Exam",
   {
-    exam_id: { type: r.INTEGER, primaryKey: !0, autoIncrement: !0 },
-    name: { type: r.TEXT, allowNull: !1 },
-    description: { type: r.TEXT, allowNull: !0 },
-    duration_minutes: { type: r.INTEGER, allowNull: !0, validate: { isInt: !0 } },
-    created_at: { type: r.DATE, defaultValue: r.NOW, allowNull: !1 },
-    updated_at: { type: r.DATE, defaultValue: r.NOW, allowNull: !1 }
+    exam_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    name: { type: DataTypes.TEXT, allowNull: false },
+    description: { type: DataTypes.TEXT, allowNull: true },
+    duration_minutes: { type: DataTypes.INTEGER, allowNull: true, validate: { isInt: true } },
+    created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, allowNull: false },
+    updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, allowNull: false }
   },
   {
     tableName: "Exam",
-    timestamps: !1
+    timestamps: false
   }
 );
-d.associate = () => {
-  d.belongsToMany(i, {
+Exam.associate = () => {
+  Exam.belongsToMany(Question, {
     through: "ExamQuestion",
     foreignKey: "exam_id",
     otherKey: "question_id",
-    timestamps: !1,
+    timestamps: false,
     as: "questions",
     onDelete: "CASCADE"
   });
 };
-const i = n.define(
+const Question = sequelize.define(
   "Question",
   {
-    question_id: { type: r.INTEGER, primaryKey: !0, autoIncrement: !0 },
-    text: { type: r.TEXT, allowNull: !1 },
-    type: { type: r.STRING, allowNull: !1 },
-    category_id: r.INTEGER,
-    source: { type: r.STRING, defaultValue: "manual", allowNull: !0 },
-    created_at: { type: r.DATE, defaultValue: r.NOW, allowNull: !1 },
-    updated_at: { type: r.DATE, defaultValue: r.NOW, allowNull: !1 }
     question_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     text: { type: DataTypes.TEXT, allowNull: false },
     type: { type: DataTypes.STRING, allowNull: false },
@@ -110,117 +105,90 @@ const i = n.define(
   },
   {
     tableName: "Question",
-    timestamps: !1
+    timestamps: false
   }
 );
-i.associate = () => {
-  i.hasMany(c, {
+Question.associate = () => {
+  Question.hasMany(Option, {
     foreignKey: "question_id",
     onDelete: "CASCADE",
     as: "options"
-  }), i.belongsTo(u, {
+  });
+  Question.belongsTo(Category, {
     foreignKey: "category_id",
     as: "category"
-  }), i.belongsToMany(d, {
+  });
+  Question.belongsToMany(Exam, {
     through: "ExamQuestion",
     foreignKey: "question_id",
     otherKey: "exam_id",
-    timestamps: !1,
+    timestamps: false,
     as: "exams",
     onDelete: "CASCADE"
   });
 };
-const y = n.define(
+const UserAnswer = sequelize.define(
   "UserAnswer",
   {
-    result_id: { type: r.INTEGER, primaryKey: !0, allowNull: !1 },
-    question_id: { type: r.INTEGER, primaryKey: !0, allowNull: !1 },
-    option_id: { type: r.INTEGER, allowNull: !1 },
-    is_correct: { type: r.BOOLEAN, allowNull: !1 }
+    result_id: { type: DataTypes.INTEGER, primaryKey: true, allowNull: false },
+    question_id: { type: DataTypes.INTEGER, primaryKey: true, allowNull: false },
+    option_id: { type: DataTypes.INTEGER, allowNull: false },
+    is_correct: { type: DataTypes.BOOLEAN, allowNull: false }
   },
   {
     tableName: "UserAnswer",
-    timestamps: !1
+    timestamps: false
   }
 );
-y.associate = () => {
-  y.belongsTo(m, { foreignKey: "result_id", as: "result", onDelete: "CASCADE" }), y.belongsTo(i, { foreignKey: "question_id", as: "question", onDelete: "CASCADE" }), y.belongsTo(c, { foreignKey: "option_id", as: "option", onDelete: "CASCADE" });
+UserAnswer.associate = () => {
+  UserAnswer.belongsTo(Result, { foreignKey: "result_id", as: "result", onDelete: "CASCADE" });
+  UserAnswer.belongsTo(Question, { foreignKey: "question_id", as: "question", onDelete: "CASCADE" });
+  UserAnswer.belongsTo(Option, { foreignKey: "option_id", as: "option", onDelete: "CASCADE" });
 };
-const m = n.define(
+const Result = sequelize.define(
   "Result",
   {
-    result_id: { type: r.INTEGER, primaryKey: !0, autoIncrement: !0 },
-    exam_id: { type: r.INTEGER, allowNull: !1 },
-    score: { type: r.INTEGER, allowNull: !1, validate: { min: 0, max: 100 } },
-    correct_answers: { type: r.INTEGER, allowNull: !1 },
-    incorrect_answers: { type: r.INTEGER, allowNull: !1 },
-    time_used: { type: r.INTEGER, allowNull: !1 },
-    taken_at: { type: r.DATE, defaultValue: r.NOW, allowNull: !1 }
+    result_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    exam_id: { type: DataTypes.INTEGER, allowNull: false },
+    score: { type: DataTypes.INTEGER, allowNull: false, validate: { min: 0, max: 100 } },
+    correct_answers: { type: DataTypes.INTEGER, allowNull: false },
+    incorrect_answers: { type: DataTypes.INTEGER, allowNull: false },
+    time_used: { type: DataTypes.INTEGER, allowNull: false },
+    taken_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, allowNull: false }
   },
   {
     tableName: "Result",
-    timestamps: !1
+    timestamps: false
   }
 );
-m.associate = () => {
-  m.belongsTo(d, {
+Result.associate = () => {
+  Result.belongsTo(Exam, {
     foreignKey: "exam_id",
     as: "exam",
     onDelete: "CASCADE"
-  }), m.hasMany(y, {
+  });
+  Result.hasMany(UserAnswer, {
     foreignKey: "result_id",
     as: "userAnswers",
     onDelete: "CASCADE"
   });
 };
-i.associate && i.associate();
-c.associate && c.associate();
-u.associate && u.associate();
-d.associate && d.associate();
-m.associate && m.associate();
-y.associate && y.associate();
-const _ = {
-  getAll: async () => (await i.findAll({
-    include: [
-      { model: c, as: "options" },
-      { model: u, as: "category" }
-    ]
-  })).map((e) => e.get({ plain: !0 })),
-  getById: async (t) => {
-    const e = await i.findOne({
-      where: { question_id: t },
+Question.associate && Question.associate();
+Option.associate && Option.associate();
+Category.associate && Category.associate();
+Exam.associate && Exam.associate();
+Result.associate && Result.associate();
+UserAnswer.associate && UserAnswer.associate();
+const QuestionController = {
+  getAll: async () => {
+    const questions = await Question.findAll({
       include: [
-        { model: c, as: "options" },
-        { model: u, as: "category" }
+        { model: Option, as: "options" },
+        { model: Category, as: "category" }
       ]
     });
-    if (!e)
-      throw new Error(`Question with ID ${t} not found`);
-    return e.get({ plain: !0 });
+    return questions.map((q) => q.get({ plain: true }));
   },
-  create: async (t) => {
-    const e = await n.transaction();
-    try {
-      const a = await i.create(
-        {
-          text: t.text,
-          type: t.type,
-          category_id: t.category_id
-        },
-        { transaction: e }
-      );
-      for (const l of t.options)
-        await c.create(
-          {
-            text: l.text,
-            is_correct: l.is_correct,
-            question_id: a.question_id
-          },
-          { transaction: e }
-        );
-      return await e.commit(), a;
-    } catch (a) {
-      throw await e.rollback(), a;
   getById: async (id) => {
     const question = await Question.findOne({
       where: { question_id: id },
@@ -286,57 +254,69 @@ const _ = {
       throw err;
     }
   },
-  update: async (t, e) => {
-    var l;
-    const a = await n.transaction();
+  update: async (id, data) => {
+    var _a;
+    const t = await sequelize.transaction();
     try {
-      if (e.category_id && !await u.findByPk(e.category_id, { transaction: a }))
-        throw await a.rollback(), console.error(`Category with ID ${e.category_id} does not exist`), new Error("CATEGORY_NOT_FOUND");
-      if (!await i.findByPk(t, { transaction: a }))
-        throw await a.rollback(), console.error(`Question with ID ${t} does not exist`), new Error("QUESTION_NOT_FOUND");
-      await n.query("PRAGMA foreign_keys = OFF", {
-        transaction: a,
-        type: n.QueryTypes.RAW
+      if (data.category_id) {
+        const categoryExists = await Category.findByPk(data.category_id, { transaction: t });
+        if (!categoryExists) {
+          await t.rollback();
+          console.error(`Category with ID ${data.category_id} does not exist`);
+          throw new Error("CATEGORY_NOT_FOUND");
+        }
+      }
+      const existingQuestion = await Question.findByPk(id, { transaction: t });
+      if (!existingQuestion) {
+        await t.rollback();
+        console.error(`Question with ID ${id} does not exist`);
+        throw new Error("QUESTION_NOT_FOUND");
+      }
+      await sequelize.query("PRAGMA foreign_keys = OFF", {
+        transaction: t,
+        type: sequelize.QueryTypes.RAW
       });
-      const x = await n.query(
+      const existingOptions = await sequelize.query(
         "SELECT option_id FROM `Option` WHERE `question_id` = ?",
         {
-          replacements: [t],
-          transaction: a,
-          type: n.QueryTypes.SELECT
+          replacements: [id],
+          transaction: t,
+          type: sequelize.QueryTypes.SELECT
         }
       );
-      if (x.length > 0) {
-        const w = x.map((f) => f.option_id);
-        await n.query(
-          `DELETE FROM \`UserAnswer\` WHERE \`option_id\` IN (${w.map(() => "?").join(",")})`,
+      if (existingOptions.length > 0) {
+        const optionIds = existingOptions.map((opt) => opt.option_id);
+        await sequelize.query(
+          `DELETE FROM \`UserAnswer\` WHERE \`option_id\` IN (${optionIds.map(() => "?").join(",")})`,
           {
-            replacements: w,
-            transaction: a,
-            type: n.QueryTypes.DELETE
+            replacements: optionIds,
+            transaction: t,
+            type: sequelize.QueryTypes.DELETE
           }
         );
       }
-      if (await n.query("DELETE FROM `Option` WHERE `question_id` = ?", {
-        replacements: [t],
-        transaction: a,
-        type: n.QueryTypes.DELETE
-      }), await i.update(
+      await sequelize.query("DELETE FROM `Option` WHERE `question_id` = ?", {
+        replacements: [id],
+        transaction: t,
+        type: sequelize.QueryTypes.DELETE
+      });
+      await Question.update(
         {
-          text: e.text,
-          type: e.type,
-          category_id: e.category_id
+          text: data.text,
+          type: data.type,
+          category_id: data.category_id
         },
-        { where: { question_id: t }, transaction: a }
-      ), e.options && e.options.length > 0)
-        for (const w of e.options)
-          await c.create(
+        { where: { question_id: id }, transaction: t }
+      );
+      if (data.options && data.options.length > 0) {
+        for (const opt of data.options) {
+          await Option.create(
             {
-              text: w.text,
-              is_correct: w.is_correct,
-              question_id: t
+              text: opt.text,
+              is_correct: opt.is_correct,
+              question_id: id
             },
-            { transaction: a }
+            { transaction: t }
           );
         }
       }
@@ -378,80 +358,91 @@ const _ = {
       return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     };
     try {
-      let o = {};
-      if (a && a.length > 0 && (o.category_id = {
-        [C.in]: a
-      }), e && e.trim()) {
-        const w = l(e), f = [];
-        f.push({
-          text: n.where(
-            n.fn(
-              "LOWER",
-              n.fn(
-                "REPLACE",
-                n.fn(
-                  "REPLACE",
-                  n.fn(
-                    "REPLACE",
-                    n.fn(
-                      "REPLACE",
-                      n.fn("REPLACE", n.col("Question.text"), "á", "a"),
-                      "é",
-                      "e"
-                    ),
-                    "í",
-                    "i"
-                  ),
-                  "ó",
-                  "o"
-                ),
-                "ú",
-                "u"
-              )
-            ),
-            "LIKE",
-            `%${w}%`
-          )
-        }), (!a || a.length === 0) && f.push(
-          n.where(
-            n.fn(
-              "LOWER",
-              n.fn(
-                "REPLACE",
-                n.fn(
-                  "REPLACE",
-                  n.fn(
-                    "REPLACE",
-                    n.fn(
-                      "REPLACE",
-                      n.fn("REPLACE", n.col("category.name"), "á", "a"),
-                      "é",
-                      "e"
-                    ),
-                    "í",
-                    "i"
-                  ),
-                  "ó",
-                  "o"
-                ),
-                "ú",
-                "u"
-              )
-            ),
-            "LIKE",
-            `%${w}%`
-          )
-        );
-        const R = { [C.or]: f };
-        Object.keys(o).length > 0 ? o = {
-          [C.and]: [o, R]
-        } : o = R;
+      let whereClause = {};
+      if (categoryIds && categoryIds.length > 0) {
+        whereClause.category_id = {
+          [Op.in]: categoryIds
+        };
       }
-      return (await i.findAll({
-        where: o,
+      if (searchTerm && searchTerm.trim()) {
+        const normalizedSearchTerm = normalizeSearchTerm(searchTerm);
+        const searchConditions = [];
+        searchConditions.push({
+          text: sequelize.where(
+            sequelize.fn(
+              "LOWER",
+              sequelize.fn(
+                "REPLACE",
+                sequelize.fn(
+                  "REPLACE",
+                  sequelize.fn(
+                    "REPLACE",
+                    sequelize.fn(
+                      "REPLACE",
+                      sequelize.fn("REPLACE", sequelize.col("Question.text"), "á", "a"),
+                      "é",
+                      "e"
+                    ),
+                    "í",
+                    "i"
+                  ),
+                  "ó",
+                  "o"
+                ),
+                "ú",
+                "u"
+              )
+            ),
+            "LIKE",
+            `%${normalizedSearchTerm}%`
+          )
+        });
+        if (!categoryIds || categoryIds.length === 0) {
+          searchConditions.push(
+            sequelize.where(
+              sequelize.fn(
+                "LOWER",
+                sequelize.fn(
+                  "REPLACE",
+                  sequelize.fn(
+                    "REPLACE",
+                    sequelize.fn(
+                      "REPLACE",
+                      sequelize.fn(
+                        "REPLACE",
+                        sequelize.fn("REPLACE", sequelize.col("category.name"), "á", "a"),
+                        "é",
+                        "e"
+                      ),
+                      "í",
+                      "i"
+                    ),
+                    "ó",
+                    "o"
+                  ),
+                  "ú",
+                  "u"
+                )
+              ),
+              "LIKE",
+              `%${normalizedSearchTerm}%`
+            )
+          );
+        }
+        const searchClause = { [Op.or]: searchConditions };
+        if (Object.keys(whereClause).length > 0) {
+          whereClause = {
+            [Op.and]: [whereClause, searchClause]
+          };
+        } else {
+          whereClause = searchClause;
+        }
+      }
+      const questions = await Question.findAll({
+        where: whereClause,
         include: [
-          { model: c, as: "options" },
-          { model: u, as: "category" }
+          { model: Option, as: "options" },
+          { model: Category, as: "category" }
         ],
         order: [["question_id", "DESC"]]
       });
@@ -461,261 +452,316 @@ const _ = {
       return [];
     }
   },
-  getByCategory: async (t) => (await i.findAll({
-    where: { category_id: t },
-    include: [
-      { model: c, as: "options" },
-      { model: u, as: "category" }
-    ],
-    order: [["question_id", "DESC"]]
-  })).map((a) => a.get({ plain: !0 }))
+  getByCategory: async (categoryId) => {
+    const questions = await Question.findAll({
+      where: { category_id: categoryId },
+      include: [
+        { model: Option, as: "options" },
+        { model: Category, as: "category" }
+      ],
+      order: [["question_id", "DESC"]]
+    });
+    return questions.map((q) => q.get({ plain: true }));
+  }
 };
-s.handle("questions:getAll", async () => await _.getAll());
-s.handle("questions:create", async (t, e) => await _.create(e));
-s.handle("questions:update", async (t, e, a) => await _.update(e, a));
-s.handle("questions:delete", async (t, e) => await _.delete(e));
-s.handle("questions:search", async (t, e) => await _.search(e));
-s.handle("questions:getByCategory", async (t, e) => await _.getByCategory(e));
-const q = {
-  getAll: async () => await c.findAll(),
-  getById: async (t) => await c.findOne({ where: { option_id: t } }),
-  create: async (t) => await c.create(t),
-  update: async (t, e) => await c.update(e, { where: { option_id: t } }),
-  delete: async (t) => await c.destroy({ where: { option_id: t } })
+ipcMain.handle("questions:getAll", async () => {
+  return await QuestionController.getAll();
+});
+ipcMain.handle("questions:create", async (_, data) => {
+  return await QuestionController.create(data);
+});
+ipcMain.handle("questions:update", async (_, id, data) => {
+  return await QuestionController.update(id, data);
+});
+ipcMain.handle("questions:delete", async (_, id) => {
+  return await QuestionController.delete(id);
+});
+ipcMain.handle("questions:search", async (_, filters) => {
+  return await QuestionController.search(filters);
+});
+ipcMain.handle("questions:getByCategory", async (_, categoryId) => {
+  return await QuestionController.getByCategory(categoryId);
+});
+const OptionController = {
+  getAll: async () => {
+    return await Option.findAll();
+  },
+  getById: async (id) => {
+    return await Option.findOne({ where: { option_id: id } });
+  },
+  create: async (data) => {
+    return await Option.create(data);
+  },
+  update: async (id, data) => {
+    return await Option.update(data, { where: { option_id: id } });
+  },
+  delete: async (id) => {
+    return await Option.destroy({ where: { option_id: id } });
+  }
 };
-s.handle("options:getAll", async () => await q.getAll());
-s.handle("options:create", async (t, e) => await q.create(e));
-s.handle("options:update", async (t, e, a) => await q.update(e, a));
-s.handle("options:delete", async (t, e) => await q.delete(e));
-const A = {
+ipcMain.handle("options:getAll", async () => {
+  return await OptionController.getAll();
+});
+ipcMain.handle("options:create", async (_, data) => {
+  return await OptionController.create(data);
+});
+ipcMain.handle("options:update", async (_, id, data) => {
+  return await OptionController.update(id, data);
+});
+ipcMain.handle("options:delete", async (_, id) => {
+  return await OptionController.delete(id);
+});
+const CategoryController = {
   // Get all categories
-  getAll: async () => (await u.findAll({
-    order: [["name", "ASC"]]
-  })).map((e) => e.get({ plain: !0 })),
+  getAll: async () => {
+    const categories = await Category.findAll({
+      order: [["name", "ASC"]]
+    });
+    return categories.map((c) => c.get({ plain: true }));
+  },
   // Create a new category
-  create: async (t) => {
+  create: async (data) => {
     try {
-      return (await u.create({
-        name: t.name
-      })).get({ plain: !0 });
-    } catch (e) {
-      throw e.name === "SequelizeUniqueConstraintError" ? new Error("Category name already exists") : e;
+      const category = await Category.create({
+        name: data.name
+      });
+      return category.get({ plain: true });
+    } catch (error) {
+      if (error.name === "SequelizeUniqueConstraintError") {
+        throw new Error("Category name already exists");
+      }
+      throw error;
     }
   },
   // Update an existing category
-  update: async (t, e) => {
+  update: async (id, data) => {
     try {
-      const [a] = await u.update(
-        { name: e.name },
-        { where: { category_id: t } }
+      const [updatedRowsCount] = await Category.update(
+        { name: data.name },
+        { where: { category_id: id } }
       );
-      if (a === 0)
+      if (updatedRowsCount === 0) {
         throw new Error("Category not found");
-      return (await u.findByPk(t)).get({ plain: !0 });
-    } catch (a) {
-      throw a.name === "SequelizeUniqueConstraintError" ? new Error("Category name already exists") : a;
+      }
+      const updatedCategory = await Category.findByPk(id);
+      return updatedCategory.get({ plain: true });
+    } catch (error) {
+      if (error.name === "SequelizeUniqueConstraintError") {
+        throw new Error("Category name already exists");
+      }
+      throw error;
     }
   },
   // Delete a category
-  delete: async (t) => {
-    if (await u.destroy({
-      where: { category_id: t }
-    }) === 0)
+  delete: async (id) => {
+    const deletedRowsCount = await Category.destroy({
+      where: { category_id: id }
+    });
+    if (deletedRowsCount === 0) {
       throw new Error("Category not found");
-    return !0;
+    }
+    return true;
   },
   // Check if category name exists
-  nameExists: async (t, e = null) => {
-    const a = { name: t };
-    return e && (a.category_id = { [u.sequelize.Op.ne]: e }), !!await u.findOne({ where: a });
+  nameExists: async (name, excludeId = null) => {
+    const whereClause = { name };
+    if (excludeId) {
+      whereClause.category_id = { [Category.sequelize.Op.ne]: excludeId };
+    }
+    const category = await Category.findOne({ where: whereClause });
+    return !!category;
   }
 };
-s.handle("categories:getAll", async () => await A.getAll());
-s.handle("categories:create", async (t, e) => await A.create(e));
-s.handle("categories:update", async (t, e, a) => await A.update(e, a));
-s.handle("categories:delete", async (t, e) => await A.delete(e));
-s.handle("categories:nameExists", async (t, e, a = null) => await A.nameExists(e, a));
-const g = {
+ipcMain.handle("categories:getAll", async () => {
+  return await CategoryController.getAll();
+});
+ipcMain.handle("categories:create", async (_, data) => {
+  return await CategoryController.create(data);
+});
+ipcMain.handle("categories:update", async (_, id, data) => {
+  return await CategoryController.update(id, data);
+});
+ipcMain.handle("categories:delete", async (_, id) => {
+  return await CategoryController.delete(id);
+});
+ipcMain.handle("categories:nameExists", async (_, name, excludeId = null) => {
+  return await CategoryController.nameExists(name, excludeId);
+});
+const ExamController = {
   // Get all exams with associated questions
-  getAll: async () => (await d.findAll({
-    include: [{ model: i, as: "questions" }]
-  })).map((e) => e.get({ plain: !0 })),
+  getAll: async () => {
+    const exams = await Exam.findAll({
+      include: [{ model: Question, as: "questions" }]
+    });
+    return exams.map((e) => e.get({ plain: true }));
+  },
   // Get an exam by ID with associated questions and their options
-  getById: async (t) => {
-    const e = await d.findByPk(t, {
+  getById: async (id) => {
+    const exam = await Exam.findByPk(id, {
       include: [
         {
-          model: i,
+          model: Question,
           as: "questions",
-          include: [{ model: c, as: "options" }]
+          include: [{ model: Option, as: "options" }]
         }
       ]
     });
-    return e ? e.get({ plain: !0 }) : null;
+    return exam ? exam.get({ plain: true }) : null;
   },
   // Create a new exam with associated questions
-  create: async (t) => {
-    const e = await n.transaction();
+  create: async (data) => {
+    const t = await sequelize.transaction();
     try {
-      const a = await d.create(
+      const exam = await Exam.create(
         {
-          name: t.name,
-          description: t.description,
-          duration_minutes: t.duration_minutes
+          name: data.name,
+          description: data.description,
+          duration_minutes: data.duration_minutes
         },
-        { transaction: e }
+        { transaction: t }
       );
-      return t.question_ids && t.question_ids.length > 0 && await a.setQuestions(t.question_ids, { transaction: e }), await e.commit(), a;
-    } catch (a) {
-      throw await e.rollback(), a;
+      if (data.question_ids && data.question_ids.length > 0) {
+        await exam.setQuestions(data.question_ids, { transaction: t });
+      }
+      await t.commit();
+      return exam;
+    } catch (err) {
+      await t.rollback();
+      throw err;
     }
   },
   // Update an existing exam and its associated questions
-  update: async (t, e) => {
-    const a = await n.transaction();
+  update: async (id, data) => {
+    const t = await sequelize.transaction();
     try {
-      return await d.update(
+      await Exam.update(
         {
-          name: e.name,
-          description: e.description,
-          duration_minutes: e.duration_minutes
+          name: data.name,
+          description: data.description,
+          duration_minutes: data.duration_minutes
         },
-        { where: { exam_id: t }, transaction: a }
-      ), e.question_ids && e.question_ids.length > 0 && await (await d.findByPk(t, { transaction: a })).setQuestions(e.question_ids, { transaction: a }), await a.commit(), { message: "Exam updated successfully" };
-    } catch (l) {
-      throw await a.rollback(), l;
+        { where: { exam_id: id }, transaction: t }
+      );
+      if (data.question_ids && data.question_ids.length > 0) {
+        const exam = await Exam.findByPk(id, { transaction: t });
+        await exam.setQuestions(data.question_ids, { transaction: t });
+      }
+      await t.commit();
+      return { message: "Exam updated successfully" };
+    } catch (err) {
+      await t.rollback();
+      throw err;
     }
   },
   // Delete an exam by ID
-  delete: async (t) => {
-    const e = await n.transaction();
+  delete: async (id) => {
+    const t = await sequelize.transaction();
     try {
-      const a = await d.destroy({
-        where: { exam_id: t },
-        transaction: e
+      const result = await Exam.destroy({
+        where: { exam_id: id },
+        transaction: t
       });
-      return await e.commit(), a > 0 ? { message: "Exam deleted successfully" } : null;
-    } catch (a) {
-      throw await e.rollback(), a;
+      await t.commit();
+      return result > 0 ? { message: "Exam deleted successfully" } : null;
+    } catch (err) {
+      await t.rollback();
+      throw err;
     }
   },
   // Get questions associated with an exam
-  getQuestions: async (t) => {
-    const e = await d.findByPk(t, {
+  getQuestions: async (examId) => {
+    const exam = await Exam.findByPk(examId, {
       include: [
         {
-          model: i,
+          model: Question,
           as: "questions",
           include: [
-            { model: u, as: "category" },
-            { model: c, as: "options" }
+            { model: Category, as: "category" },
+            { model: Option, as: "options" }
           ]
         }
       ]
     });
-    return e ? e.questions.map((a) => a.get({ plain: !0 })) : [];
+    return exam ? exam.questions.map((q) => q.get({ plain: true })) : [];
   },
   // Add questions to an exam
-  addQuestions: async (t, e) => {
-    const a = await n.transaction();
+  addQuestions: async (examId, questionIds) => {
+    const t = await sequelize.transaction();
     try {
-      const l = await d.findByPk(t, { transaction: a });
-      if (!l) throw new Error("Exam not found");
-      const o = await i.findAll({
-        where: { question_id: e },
-        transaction: a
+      const exam = await Exam.findByPk(examId, { transaction: t });
+      if (!exam) throw new Error("Exam not found");
+      const questions = await Question.findAll({
+        where: { question_id: questionIds },
+        transaction: t
       });
-      return await l.addQuestions(o, { transaction: a }), await a.commit(), { message: "Questions added successfully" };
-    } catch (l) {
-      throw await a.rollback(), l;
+      await exam.addQuestions(questions, { transaction: t });
+      await t.commit();
+      return { message: "Questions added successfully" };
+    } catch (err) {
+      await t.rollback();
+      throw err;
     }
   },
   // Remove questions from an exam
-  removeQuestions: async (t, e) => {
-    const a = await n.transaction();
+  removeQuestions: async (examId, questionIds) => {
+    const t = await sequelize.transaction();
     try {
-      const l = await d.findByPk(t, { transaction: a });
-      if (!l) throw new Error("Exam not found");
-      const o = await i.findAll({
-        where: { question_id: e },
-        transaction: a
+      const exam = await Exam.findByPk(examId, { transaction: t });
+      if (!exam) throw new Error("Exam not found");
+      const questions = await Question.findAll({
+        where: { question_id: questionIds },
+        transaction: t
       });
-      return await l.removeQuestions(o, { transaction: a }), await a.commit(), { message: "Questions removed successfully" };
-    } catch (l) {
-      throw await a.rollback(), l;
+      await exam.removeQuestions(questions, { transaction: t });
+      await t.commit();
+      return { message: "Questions removed successfully" };
+    } catch (err) {
+      await t.rollback();
+      throw err;
     }
   }
-}, T = {
-  getAll: async () => (await m.findAll({
-    include: [
-      { model: d, as: "exam" },
-      { model: y, as: "userAnswers", include: [{ model: c, as: "option" }] }
-    ]
-  })).map((e) => e.get({ plain: !0 })),
-  getByExamId: async (t) => (await m.findAll({
-    where: { exam_id: t },
-    order: [["taken_at", "DESC"]]
-  })).map((a) => a.get({ plain: !0 })),
-  getById: async (t) => {
-    const e = await m.findByPk(t, {
+};
+const ResultController = {
+  getAll: async () => {
+    const results = await Result.findAll({
       include: [
-        { model: d, as: "exam" },
-        { model: y, as: "userAnswers", include: [{ model: c, as: "option" }] }
+        { model: Exam, as: "exam" },
+        { model: UserAnswer, as: "userAnswers", include: [{ model: Option, as: "option" }] }
       ]
     });
-    return e ? e.get({ plain: !0 }) : null;
+    return results.map((e) => e.get({ plain: true }));
   },
-  create: async (t) => (await m.create({
-    exam_id: t.exam_id,
-    score: t.score,
-    correct_answers: t.correct_answers,
-    incorrect_answers: t.incorrect_answers,
-    time_used: t.time_used,
-    taken_at: /* @__PURE__ */ new Date()
-  })).get({ plain: !0 }),
-  delete: async (t) => await m.destroy({ where: { result_id: t } })
-};
-console.log("Gemini API key is not set.");
-const P = {
-  explainQuestion: async (t, e) => {
-    throw new Error("Gemini API key is not set.");
+  getByExamId: async (examId) => {
+    const results = await Result.findAll({
+      where: { exam_id: examId },
+      order: [["taken_at", "DESC"]]
+    });
+    return results.map((e) => e.get({ plain: true }));
   },
-  // Método para retroalimentación del examen
-  feedbackExam: async (t, e) => {
-    throw new Error("Gemini API key is not set.");
+  getById: async (id) => {
+    const result = await Result.findByPk(id, {
+      include: [
+        { model: Exam, as: "exam" },
+        { model: UserAnswer, as: "userAnswers", include: [{ model: Option, as: "option" }] }
+      ]
+    });
+    return result ? result.get({ plain: true }) : null;
+  },
+  create: async (data) => {
+    const result = await Result.create({
+      exam_id: data.exam_id,
+      score: data.score,
+      correct_answers: data.correct_answers,
+      incorrect_answers: data.incorrect_answers,
+      time_used: data.time_used,
+      taken_at: /* @__PURE__ */ new Date()
+    });
+    return result.get({ plain: true });
+  },
+  delete: async (id) => {
+    return await Result.destroy({ where: { result_id: id } });
   }
 };
-s.handle("ai:explainQuestion", async (t, e, a) => await P.explainQuestion(e, a));
-s.handle("ai:feedbackExam", async (t, e, a) => await P.feedbackExam(e, a));
-s.handle("exams:getAll", async () => await g.getAll());
-s.handle("exams:getById", async (t, e) => await g.getById(e));
-s.handle("exams:create", async (t, e) => await g.create(e));
-s.handle("exams:update", async (t, e, a) => await g.update(e, a));
-s.handle("exams:delete", async (t, e) => await g.delete(e));
-s.handle("exams:getQuestions", async (t, e) => await g.getQuestions(e));
-s.handle("exams:addQuestions", async (t, e, a) => await g.addQuestions(e, a));
-s.handle("exams:removeQuestions", async (t, e, a) => await g.removeQuestions(e, a));
-s.handle("results:getAll", async () => await T.getAll());
-s.handle("results:getById", async (t, e) => await T.getById(e));
-s.handle("results:create", async (t, e) => await T.create(e));
-s.handle("results:delete", async (t, e) => await T.delete(e));
-s.handle("results:getByExamId", async (t, e) => await T.getByExamId(e));
-const N = {
-  getAll: async () => await y.findAll({ include: ["result", "question", "option"] }),
-  getById: async (t, e) => await y.findOne({
-    where: { result_id: t, question_id: e },
-    include: ["result", "question", "option"]
-  }),
-  create: async (t) => {
-    const e = await c.findByPk(t.optionId);
-    if (!e) throw new Error("Option not found");
-    const a = !!e.is_correct;
-    return await y.create({
-      result_id: t.resultId,
-      question_id: t.questionId,
-      option_id: t.optionId,
-      is_correct: a
-=======
 function boldMarkdownToHtml(text) {
   if (!text) return text;
   return text.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>");
@@ -1044,27 +1090,10 @@ const UserAnswerController = {
       is_correct: isCorrect
     });
   },
-  delete: async (t, e) => await y.destroy({ where: { result_id: t, question_id: e } })
+  delete: async (resultId, questionId) => {
+    return await UserAnswer.destroy({ where: { result_id: resultId, question_id: questionId } });
+  }
 };
-s.handle("userAnswers:getAll", async () => await N.getAll());
-s.handle("userAnswers:getById", async (t, e, a) => await N.getById(e, a));
-s.handle("userAnswers:create", async (t, e) => await N.create(e));
-s.handle("userAnswers:delete", async (t, e, a) => await N.delete(e, a));
-const b = E.dirname(D(import.meta.url));
-process.env.APP_ROOT = E.join(b, "..");
-const I = process.env.VITE_DEV_SERVER_URL, W = E.join(process.env.APP_ROOT, "dist-electron"), Q = E.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = I ? E.join(process.env.APP_ROOT, "public") : Q;
-let p = null;
-function k() {
-  p = new O({
-    icon: E.join(process.env.VITE_PUBLIC, "Logo.png"),
-    webPreferences: {
-      preload: E.join(b, "preload.mjs")
-    }
-  }), p.webContents.on("did-finish-load", () => {
-    p == null || p.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
-  }), I ? p.loadURL(I) : p.loadFile(E.join(Q, "index.html"));
-=======
 ipcMain.handle("userAnswers:getAll", async () => {
   return await UserAnswerController.getAll();
 });
@@ -1086,6 +1115,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path$1.join(process.env.APP_ROOT
 let win = null;
 function createWindow() {
   win = new BrowserWindow({
+    icon: path$1.join(process.env.VITE_PUBLIC, "Logo.png"),
     width: 1200,
     height: 800,
     minWidth: 800,
@@ -1136,12 +1166,12 @@ function createWindow() {
     win.loadFile(path$1.join(RENDERER_DIST, "index.html"));
   }
 }
-h.on("window-all-closed", () => {
-  process.platform !== "darwin" && (h.quit(), p = null);
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    app.quit();
+    win = null;
+  }
 });
-h.on("activate", () => {
-  O.getAllWindows().length === 0 && k();
-=======
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
@@ -1152,17 +1182,19 @@ app.on("activate", () => {
     }
   }
 });
-h.whenReady().then(async () => {
+app.whenReady().then(async () => {
   try {
-    await n.authenticate(), console.log("Database connection established.");
-  } catch (t) {
-    console.error("Error connecting to the database:", t), h.quit();
+    await sequelize.authenticate();
+    console.log("Database connection established.");
+  } catch (err) {
+    console.error("Error connecting to the database:", err);
+    app.quit();
     return;
   }
-  k();
+  createWindow();
 });
 export {
-  W as MAIN_DIST,
-  Q as RENDERER_DIST,
-  I as VITE_DEV_SERVER_URL
+  MAIN_DIST,
+  RENDERER_DIST,
+  VITE_DEV_SERVER_URL
 };
