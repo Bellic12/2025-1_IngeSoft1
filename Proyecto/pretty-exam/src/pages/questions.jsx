@@ -83,7 +83,7 @@ const Questions = () => {
         <div className="flex flex-col">
           <h1 className="text-3xl font-bold">Banco de Preguntas</h1>
           <p className="text-base-content/70 text-lg mt-2">
-            Gestiona y organiza tus preguntas de examen
+            Crea, edita y elimina tus preguntas cuando lo necesites
           </p>
         </div>
 

@@ -1,7 +1,7 @@
 const getTypeBadge = type => {
   switch (type) {
     case 'multiple_choice':
-      return 'badge-info'
+      return 'badge-info-content'
     case 'true_false':
       return 'badge-success'
     default:
@@ -39,7 +39,9 @@ const QuestionDisplay = ({
         <h2 className="text-xl font-semibold mb-2">{question.text}</h2>
 
         <div className="flex gap-2">
-          <span className="badge bg-purple-600 text-white">{categoryText}</span>
+          <span className={`badge bg-purple-600 text-${getTypeBadge(question.type)}-content`}>
+            {categoryText}
+          </span>
           <span className={`badge ${getTypeBadge(question.type)}`}>
             {question.type === 'multiple_choice' ? 'Selección múltiple' : 'Verdadero/Falso'}
           </span>

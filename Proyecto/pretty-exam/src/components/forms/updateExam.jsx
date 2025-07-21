@@ -1,4 +1,4 @@
-import { Edit } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
 
@@ -75,11 +75,8 @@ const UpdateExam = ({ exam, fetchExams }) => {
 
   return (
     <>
-      <button
-        className="btn btn-ghost btn-sm btn-circle text-warning hover:bg-warning hover:text-warning-content"
-        onClick={handleOpenModal}
-      >
-        <Edit className="w-4 h-4" />
+      <button className="btn btn-outline btn-warning btn-square btn-sm" onClick={handleOpenModal}>
+        <Pencil className="w-4 h-4" />
       </button>
       <dialog id={'modal_update_exam' + exam.exam_id} className="modal">
         <form

@@ -71,7 +71,7 @@ const Exams = () => {
         <div className="flex flex-col">
           <h1 className="text-3xl font-bold">Exámenes</h1>
           <p className="text-base-content/70 text-lg mt-2">
-            Crea y administra tus exámenes de evaluación
+            Arma tus exámenes o hazlos tú mismo a modo de práctica
           </p>
         </div>
 

@@ -203,7 +203,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
 
   return (
     <>
-      <button className="btn btn-outline btn-primary btn-square btn-sm" onClick={handleOpenModal}>
+      <button className="btn btn-outline btn-warning btn-square btn-sm" onClick={handleOpenModal}>
         <Pencil className="w-4 h-4" />
       </button>
       <dialog id={'modal_update_question' + question.question_id} className="modal">
