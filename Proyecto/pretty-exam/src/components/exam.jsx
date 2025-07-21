@@ -54,13 +54,15 @@ const Exam = ({ exam, fetchExams }) => {
         {/* Header with action buttons */}
         <div className="flex justify-between items-start mb-4">
           <div className="flex-1">
-            <h2 className="card-title text-xl font-bold text-base-content mb-2">{exam?.name}</h2>
+            <h2 className="card-title text-xl font-bold text-base-content mb-2 line-clamp-1">
+              {exam?.name}
+            </h2>
           </div>
 
           {/* Action buttons */}
           <div className="flex gap-2" onClick={e => e.stopPropagation()}>
             <button
-              className="btn btn-success btn-sm btn-circle"
+              className="btn btn-outline btn-success btn-square btn-sm"
               onClick={handleStartSimulation}
               title="Iniciar simulación"
             >
