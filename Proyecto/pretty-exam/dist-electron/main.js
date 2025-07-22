@@ -1,12 +1,27 @@
-import { ipcMain, app, BrowserWindow } from "electron";
+import { app, ipcMain, BrowserWindow } from "electron";
 import { fileURLToPath } from "node:url";
 import { Sequelize, DataTypes, Op } from "sequelize";
 import path, { join } from "path";
+import fs from "fs";
 import path$1 from "node:path";
 const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
+function getDatabasePath() {
+  let dbPath;
+  if (app.isPackaged) {
+    const appDataPath = app.getPath("userData");
+    dbPath = join(appDataPath, "pretty_exam.db");
+    const sourcePath = join(process.resourcesPath, "pretty_exam.db");
+    if (!fs.existsSync(dbPath) && fs.existsSync(sourcePath)) {
+      fs.copyFileSync(sourcePath, dbPath);
+    }
+  } else {
+    dbPath = join(__dirname$1, "..", "pretty_exam.db");
+  }
+  return dbPath;
+}
 const sequelize = new Sequelize({
   dialect: "sqlite",
-  storage: join(__dirname$1, "..", "pretty_exam.db"),
+  storage: getDatabasePath(),
   logging: false
 });
 const Category = sequelize.define(
@@ -179,6 +194,164 @@ Category.associate && Category.associate();
 Exam.associate && Exam.associate();
 Result.associate && Result.associate();
 UserAnswer.associate && UserAnswer.associate();
+const validateQuestion = (questionData) => {
+  const errors = [];
+  if (!questionData) {
+    return {
+      isValid: false,
+      errors: ["Los datos de la pregunta son requeridos"]
+    };
+  }
+  const { text, type, category_id: categoryId, options } = questionData;
+  if (!text || typeof text !== "string") {
+    errors.push("El texto de la pregunta es requerido");
+  } else {
+    const trimmedText = text.trim();
+    if (trimmedText.length === 0) {
+      errors.push("El texto de la pregunta no puede estar vacío");
+    } else if (trimmedText.length < 10) {
+      errors.push("El texto de la pregunta debe tener al menos 10 caracteres");
+    } else if (trimmedText.length > 1e3) {
+      errors.push("El texto de la pregunta no puede exceder 1000 caracteres");
+    }
+  }
+  const validTypes = ["multiple_choice", "true_false"];
+  if (!type || typeof type !== "string") {
+    errors.push("El tipo de pregunta es requerido");
+  } else if (!validTypes.includes(type)) {
+    errors.push('El tipo de pregunta debe ser "multiple_choice" o "true_false"');
+  }
+  if (categoryId !== null && categoryId !== void 0) {
+    if (!Number.isInteger(categoryId) || categoryId <= 0) {
+      errors.push("El ID de categoría debe ser un número entero positivo");
+    }
+  }
+  if (!options || !Array.isArray(options)) {
+    errors.push("Las opciones son requeridas y deben ser un array");
+  } else {
+    const optionErrors = validateOptions(options, type);
+    errors.push(...optionErrors);
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+const validateOptions = (options, type) => {
+  const errors = [];
+  if (options.length === 0) {
+    errors.push("Debe haber al menos una opción");
+    return errors;
+  }
+  if (type === "multiple_choice") {
+    if (options.length < 2) {
+      errors.push("Las preguntas de opción múltiple deben tener al menos 2 opciones");
+    } else if (options.length > 6) {
+      errors.push("Las preguntas de opción múltiple no pueden tener más de 6 opciones");
+    }
+  } else if (type === "true_false") {
+    if (options.length !== 2) {
+      errors.push("Las preguntas de verdadero/falso deben tener exactamente 2 opciones");
+    }
+  }
+  options.forEach((option, index) => {
+    if (!option || typeof option !== "object") {
+      errors.push(`La opción ${index + 1} debe ser un objeto válido`);
+      return;
+    }
+    const { text, isCorrect } = option;
+    if (!text || typeof text !== "string") {
+      errors.push(`El texto de la opción ${index + 1} es requerido`);
+    } else {
+      const trimmedText = text.trim();
+      if (trimmedText.length === 0) {
+        errors.push(`El texto de la opción ${index + 1} no puede estar vacío`);
+      } else if (trimmedText.length > 500) {
+        errors.push(`El texto de la opción ${index + 1} no puede exceder 500 caracteres`);
+      }
+    }
+    if (typeof isCorrect !== "boolean") {
+      errors.push(`La propiedad isCorrect de la opción ${index + 1} debe ser un booleano`);
+    }
+  });
+  const correctOptions = options.filter((option) => option.isCorrect === true);
+  if (correctOptions.length === 0) {
+    errors.push("Debe haber al menos una opción correcta");
+  }
+  if (type === "true_false" && correctOptions.length !== 1) {
+    errors.push("Las preguntas de verdadero/falso deben tener exactamente una opción correcta");
+  }
+  const optionTexts = options.map((opt) => {
+    var _a;
+    return (_a = opt.text) == null ? void 0 : _a.trim().toLowerCase();
+  }).filter(Boolean);
+  const uniqueTexts = new Set(optionTexts);
+  if (optionTexts.length !== uniqueTexts.size) {
+    errors.push("No puede haber opciones con el mismo texto");
+  }
+  return errors;
+};
+const validateQuestionUpdate = (updateData) => {
+  if (!updateData || Object.keys(updateData).length === 0) {
+    return {
+      isValid: false,
+      errors: ["Debe proporcionar al menos un campo para actualizar"]
+    };
+  }
+  const errors = [];
+  if (updateData.text !== void 0) {
+    if (!updateData.text || typeof updateData.text !== "string") {
+      errors.push("El texto de la pregunta es requerido");
+    } else {
+      const trimmedText = updateData.text.trim();
+      if (trimmedText.length === 0) {
+        errors.push("El texto de la pregunta no puede estar vacío");
+      } else if (trimmedText.length < 10) {
+        errors.push("El texto de la pregunta debe tener al menos 10 caracteres");
+      } else if (trimmedText.length > 1e3) {
+        errors.push("El texto de la pregunta no puede exceder 1000 caracteres");
+      }
+    }
+  }
+  if (updateData.type !== void 0) {
+    const validTypes = ["multiple_choice", "true_false"];
+    if (!updateData.type || typeof updateData.type !== "string") {
+      errors.push("El tipo de pregunta es requerido");
+    } else if (!validTypes.includes(updateData.type)) {
+      errors.push('El tipo de pregunta debe ser "multiple_choice" o "true_false"');
+    }
+  }
+  if (updateData.category_id !== void 0 && updateData.category_id !== null) {
+    if (!Number.isInteger(updateData.category_id) || updateData.category_id <= 0) {
+      errors.push("El ID de categoría debe ser un número entero positivo");
+    }
+  }
+  if (updateData.options !== void 0) {
+    if (!updateData.options || !Array.isArray(updateData.options)) {
+      errors.push("Las opciones deben ser un array");
+    } else {
+      const type = updateData.type || "multiple_choice";
+      const optionErrors = validateOptions(updateData.options, type);
+      errors.push(...optionErrors);
+    }
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+const validateQuestionId = (questionId) => {
+  const errors = [];
+  if (questionId === null || questionId === void 0) {
+    errors.push("El ID de la pregunta es requerido");
+  } else if (!Number.isInteger(Number(questionId)) || Number(questionId) <= 0) {
+    errors.push("El ID de la pregunta debe ser un número entero positivo");
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
 const QuestionController = {
   getAll: async () => {
     const questions = await Question.findAll({
@@ -204,150 +377,159 @@ const QuestionController = {
   },
   // Create a new question with options - UPDATED
   create: async (data) => {
-    const t = await sequelize.transaction();
     try {
-      let category = null;
-      if (data.category_id && typeof data.category_id === "number") {
-        category = await Category.findByPk(data.category_id, { transaction: t });
-        if (!category) {
+      const validation = validateQuestion(data);
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(", "));
+      }
+      const t = await sequelize.transaction();
+      try {
+        let category = null;
+        if (data.category_id && typeof data.category_id === "number") {
+          category = await Category.findByPk(data.category_id, { transaction: t });
+          if (!category) {
+            throw new Error("La categoría especificada no existe");
+          }
+        } else if (data.category_id === null) {
+          category = null;
+        } else {
+          const categoryName = data.category_name || "General";
           category = await Category.findOne({
-            where: { name: "General" },
+            where: { name: categoryName },
             transaction: t
           });
+          if (!category) {
+            category = await Category.create({ name: categoryName }, { transaction: t });
+          }
         }
-      } else {
-        const categoryName = data.category_name || "General";
-        category = await Category.findOne({
-          where: { name: categoryName },
-          transaction: t
-        });
-        if (!category) {
-          category = await Category.create({ name: categoryName }, { transaction: t });
+        const questionData = {
+          text: data.text.trim(),
+          type: data.type,
+          category_id: category ? category.category_id : null,
+          source: data.source || "manual"
+        };
+        const question = await Question.create(questionData, { transaction: t });
+        if (data.options && Array.isArray(data.options)) {
+          for (const opt of data.options) {
+            await Option.create(
+              {
+                text: opt.text.trim(),
+                is_correct: opt.isCorrect,
+                // Usar isCorrect en lugar de is_correct
+                question_id: question.question_id
+              },
+              { transaction: t }
+            );
+          }
         }
+        await t.commit();
+        const createdQuestion = await QuestionController.getById(question.question_id);
+        return createdQuestion;
+      } catch (err) {
+        await t.rollback();
+        throw err;
       }
-      const questionData = {
-        text: data.text,
-        type: data.type,
-        category_id: category.category_id,
-        // Usar la categoría encontrada/creada
-        source: data.source || "manual"
-      };
-      const question = await Question.create(questionData, { transaction: t });
-      if (data.options && Array.isArray(data.options)) {
-        for (const opt of data.options) {
-          await Option.create(
-            {
-              text: opt.text,
-              is_correct: opt.is_correct,
-              question_id: question.question_id
-            },
-            { transaction: t }
-          );
-        }
-      }
-      await t.commit();
-      const createdQuestion = await QuestionController.getById(question.question_id);
-      return createdQuestion;
     } catch (err) {
-      await t.rollback();
       console.error("QuestionController: Error creando pregunta:", err);
       throw err;
     }
   },
   update: async (id, data) => {
-    var _a;
-    const t = await sequelize.transaction();
     try {
-      if (data.category_id) {
-        const categoryExists = await Category.findByPk(data.category_id, { transaction: t });
-        if (!categoryExists) {
-          await t.rollback();
-          console.error(`Category with ID ${data.category_id} does not exist`);
-          throw new Error("CATEGORY_NOT_FOUND");
+      const idValidation = validateQuestionId(id);
+      if (!idValidation.isValid) {
+        throw new Error(idValidation.errors.join(", "));
+      }
+      const updateValidation = validateQuestionUpdate(data);
+      if (!updateValidation.isValid) {
+        throw new Error(updateValidation.errors.join(", "));
+      }
+      const t = await sequelize.transaction();
+      try {
+        if (data.category_id) {
+          const categoryExists = await Category.findByPk(data.category_id, { transaction: t });
+          if (!categoryExists) {
+            throw new Error("La categoría especificada no existe");
+          }
         }
-      }
-      const existingQuestion = await Question.findByPk(id, { transaction: t });
-      if (!existingQuestion) {
-        await t.rollback();
-        console.error(`Question with ID ${id} does not exist`);
-        throw new Error("QUESTION_NOT_FOUND");
-      }
-      await sequelize.query("PRAGMA foreign_keys = OFF", {
-        transaction: t,
-        type: sequelize.QueryTypes.RAW
-      });
-      const existingOptions = await sequelize.query(
-        "SELECT option_id FROM `Option` WHERE `question_id` = ?",
-        {
-          replacements: [id],
+        const existingQuestion = await Question.findByPk(id, { transaction: t });
+        if (!existingQuestion) {
+          throw new Error("La pregunta no existe");
+        }
+        await sequelize.query("PRAGMA foreign_keys = OFF", {
           transaction: t,
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-      if (existingOptions.length > 0) {
-        const optionIds = existingOptions.map((opt) => opt.option_id);
-        await sequelize.query(
-          `DELETE FROM \`UserAnswer\` WHERE \`option_id\` IN (${optionIds.map(() => "?").join(",")})`,
+          type: sequelize.QueryTypes.RAW
+        });
+        const existingOptions = await sequelize.query(
+          "SELECT option_id FROM `Option` WHERE `question_id` = ?",
           {
-            replacements: optionIds,
+            replacements: [id],
             transaction: t,
-            type: sequelize.QueryTypes.DELETE
+            type: sequelize.QueryTypes.SELECT
           }
         );
-      }
-      await sequelize.query("DELETE FROM `Option` WHERE `question_id` = ?", {
-        replacements: [id],
-        transaction: t,
-        type: sequelize.QueryTypes.DELETE
-      });
-      await Question.update(
-        {
-          text: data.text,
-          type: data.type,
-          category_id: data.category_id
-        },
-        { where: { question_id: id }, transaction: t }
-      );
-      if (data.options && data.options.length > 0) {
-        for (const opt of data.options) {
-          await Option.create(
+        if (existingOptions.length > 0) {
+          const optionIds = existingOptions.map((opt) => opt.option_id);
+          await sequelize.query(
+            `DELETE FROM \`UserAnswer\` WHERE \`option_id\` IN (${optionIds.map(() => "?").join(",")})`,
             {
-              text: opt.text,
-              is_correct: opt.is_correct,
-              question_id: id
-            },
-            { transaction: t }
+              replacements: optionIds,
+              transaction: t,
+              type: sequelize.QueryTypes.DELETE
+            }
           );
         }
-      }
-      await sequelize.query("PRAGMA foreign_keys = ON", {
-        transaction: t,
-        type: sequelize.QueryTypes.RAW
-      });
-      await t.commit();
-      return true;
-    } catch (err) {
-      await t.rollback();
-      console.error("Error updating question:", err);
-      if (err.name === "SequelizeForeignKeyConstraintError") {
-        console.error("Foreign key constraint error details:", {
-          sql: err.sql,
-          original: (_a = err.original) == null ? void 0 : _a.message,
-          table: err.table,
-          fields: err.fields
+        await sequelize.query("DELETE FROM `Option` WHERE `question_id` = ?", {
+          replacements: [id],
+          transaction: t,
+          type: sequelize.QueryTypes.DELETE
         });
+        await Question.update(
+          {
+            text: data.text ? data.text.trim() : existingQuestion.text,
+            type: data.type || existingQuestion.type,
+            category_id: data.category_id !== void 0 ? data.category_id : existingQuestion.category_id
+          },
+          { where: { question_id: id }, transaction: t }
+        );
+        if (data.options && data.options.length > 0) {
+          for (const opt of data.options) {
+            await Option.create(
+              {
+                text: opt.text.trim(),
+                is_correct: opt.isCorrect,
+                // Usar isCorrect en lugar de is_correct
+                question_id: id
+              },
+              { transaction: t }
+            );
+          }
+        }
+        await sequelize.query("PRAGMA foreign_keys = ON", {
+          transaction: t,
+          type: sequelize.QueryTypes.RAW
+        });
+        await t.commit();
+        return true;
+      } catch (err) {
+        await t.rollback();
+        throw err;
       }
-      if (err.message === "CATEGORY_NOT_FOUND") {
-        throw new Error("CATEGORY_NOT_FOUND");
-      }
-      if (err.message === "QUESTION_NOT_FOUND") {
-        throw new Error("QUESTION_NOT_FOUND");
-      }
-      throw new Error("UPDATE_FAILED");
+    } catch (err) {
+      console.error("Error updating question:", err);
+      throw err;
     }
   },
   delete: async (id) => {
-    return await Question.destroy({ where: { question_id: id } });
+    const idValidation = validateQuestionId(id);
+    if (!idValidation.isValid) {
+      throw new Error(idValidation.errors.join(", "));
+    }
+    const deletedRowsCount = await Question.destroy({ where: { question_id: id } });
+    if (deletedRowsCount === 0) {
+      throw new Error("La pregunta no existe");
+    }
+    return true;
   },
   search: async (filters = {}) => {
     const { searchTerm, categoryIds } = filters;
@@ -511,6 +693,128 @@ ipcMain.handle("options:update", async (_, id, data) => {
 ipcMain.handle("options:delete", async (_, id) => {
   return await OptionController.delete(id);
 });
+const validateCategory = (categoryData) => {
+  const errors = [];
+  if (!categoryData) {
+    return {
+      isValid: false,
+      errors: ["Los datos de la categoría son requeridos"]
+    };
+  }
+  const { name } = categoryData;
+  if (!name || typeof name !== "string") {
+    errors.push("El nombre de la categoría es requerido");
+  } else {
+    const trimmedName = name.trim();
+    if (trimmedName.length === 0) {
+      errors.push("El nombre de la categoría no puede estar vacío");
+    } else if (trimmedName.length < 2) {
+      errors.push("El nombre de la categoría debe tener al menos 2 caracteres");
+    } else if (trimmedName.length > 100) {
+      errors.push("El nombre de la categoría no puede exceder 100 caracteres");
+    }
+    const nameRegex = /^[a-zA-ZÀ-ÿ\u00f1\u00d1\s\d\-_().]+$/;
+    if (!nameRegex.test(trimmedName)) {
+      errors.push("El nombre de la categoría contiene caracteres no permitidos");
+    }
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+const validateCategoryUpdate = (updateData) => {
+  if (!updateData || Object.keys(updateData).length === 0) {
+    return {
+      isValid: false,
+      errors: ["Debe proporcionar al menos un campo para actualizar"]
+    };
+  }
+  if (updateData.name) {
+    return validateCategory(updateData);
+  }
+  return {
+    isValid: false,
+    errors: ["No hay campos válidos para actualizar"]
+  };
+};
+const validateCategoryId = (categoryId) => {
+  const errors = [];
+  if (categoryId === null || categoryId === void 0) {
+    errors.push("El ID de la categoría es requerido");
+  } else if (!Number.isInteger(Number(categoryId)) || Number(categoryId) <= 0) {
+    errors.push("El ID de la categoría debe ser un número entero positivo");
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+const validateCategoryNameUniqueness = (name, existingCategories = [], excludeId = null) => {
+  const errors = [];
+  if (!name || typeof name !== "string") {
+    errors.push("El nombre es requerido para validar unicidad");
+    return {
+      isValid: false,
+      errors
+    };
+  }
+  const trimmedName = name.trim().toLowerCase();
+  const duplicateCategory = existingCategories.find((category) => {
+    var _a;
+    const categoryName = (_a = category.name) == null ? void 0 : _a.trim().toLowerCase();
+    const isDifferentCategory = excludeId ? category.category_id !== excludeId : true;
+    return categoryName === trimmedName && isDifferentCategory;
+  });
+  if (duplicateCategory) {
+    errors.push("Ya existe una categoría con este nombre");
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+const validateBulkCategories = (categoriesData) => {
+  const errors = [];
+  if (!Array.isArray(categoriesData)) {
+    return {
+      isValid: false,
+      errors: ["Los datos deben ser un array de categorías"]
+    };
+  }
+  if (categoriesData.length === 0) {
+    return {
+      isValid: false,
+      errors: ["Debe proporcionar al menos una categoría"]
+    };
+  }
+  if (categoriesData.length > 50) {
+    return {
+      isValid: false,
+      errors: ["No se pueden crear más de 50 categorías a la vez"]
+    };
+  }
+  categoriesData.forEach((categoryData, index) => {
+    const validation = validateCategory(categoryData);
+    if (!validation.isValid) {
+      validation.errors.forEach((error) => {
+        errors.push(`Categoría ${index + 1}: ${error}`);
+      });
+    }
+  });
+  const names = categoriesData.map((cat) => {
+    var _a;
+    return (_a = cat.name) == null ? void 0 : _a.trim().toLowerCase();
+  }).filter(Boolean);
+  const uniqueNames = new Set(names);
+  if (names.length !== uniqueNames.size) {
+    errors.push("No puede haber nombres de categoría duplicados en la misma operación");
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
 const CategoryController = {
   // Get all categories
   getAll: async () => {
@@ -522,8 +826,22 @@ const CategoryController = {
   // Create a new category
   create: async (data) => {
     try {
+      const validation = validateCategory(data);
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(", "));
+      }
+      const existingCategories = await Category.findAll({
+        attributes: ["category_id", "name"]
+      });
+      const uniquenessValidation = validateCategoryNameUniqueness(
+        data.name,
+        existingCategories.map((c) => c.get({ plain: true }))
+      );
+      if (!uniquenessValidation.isValid) {
+        throw new Error(uniquenessValidation.errors.join(", "));
+      }
       const category = await Category.create({
-        name: data.name
+        name: data.name.trim()
       });
       return category.get({ plain: true });
     } catch (error) {
@@ -536,8 +854,33 @@ const CategoryController = {
   // Update an existing category
   update: async (id, data) => {
     try {
+      const idValidation = validateCategoryId(id);
+      if (!idValidation.isValid) {
+        throw new Error(idValidation.errors.join(", "));
+      }
+      const updateValidation = validateCategoryUpdate(data);
+      if (!updateValidation.isValid) {
+        throw new Error(updateValidation.errors.join(", "));
+      }
+      const existingCategory = await Category.findByPk(id);
+      if (!existingCategory) {
+        throw new Error("Category not found");
+      }
+      if (data.name) {
+        const allCategories = await Category.findAll({
+          attributes: ["category_id", "name"]
+        });
+        const uniquenessValidation = validateCategoryNameUniqueness(
+          data.name,
+          allCategories.map((c) => c.get({ plain: true })),
+          parseInt(id)
+        );
+        if (!uniquenessValidation.isValid) {
+          throw new Error(uniquenessValidation.errors.join(", "));
+        }
+      }
       const [updatedRowsCount] = await Category.update(
-        { name: data.name },
+        { name: data.name.trim() },
         { where: { category_id: id } }
       );
       if (updatedRowsCount === 0) {
@@ -554,6 +897,10 @@ const CategoryController = {
   },
   // Delete a category
   delete: async (id) => {
+    const idValidation = validateCategoryId(id);
+    if (!idValidation.isValid) {
+      throw new Error(idValidation.errors.join(", "));
+    }
     const deletedRowsCount = await Category.destroy({
       where: { category_id: id }
     });
@@ -570,6 +917,38 @@ const CategoryController = {
     }
     const category = await Category.findOne({ where: whereClause });
     return !!category;
+  },
+  // Create multiple categories
+  createBulk: async (categoriesData) => {
+    try {
+      const validation = validateBulkCategories(categoriesData);
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(", "));
+      }
+      const existingCategories = await Category.findAll({
+        attributes: ["category_id", "name"]
+      });
+      const existingCategoriesPlain = existingCategories.map((c) => c.get({ plain: true }));
+      for (const categoryData of categoriesData) {
+        const uniquenessValidation = validateCategoryNameUniqueness(
+          categoryData.name,
+          existingCategoriesPlain
+        );
+        if (!uniquenessValidation.isValid) {
+          throw new Error(`${categoryData.name}: ${uniquenessValidation.errors.join(", ")}`);
+        }
+      }
+      const createdCategories = await Category.bulkCreate(
+        categoriesData.map((data) => ({ name: data.name.trim() })),
+        { returning: true }
+      );
+      return createdCategories.map((c) => c.get({ plain: true }));
+    } catch (error) {
+      if (error.name === "SequelizeUniqueConstraintError") {
+        throw new Error("One or more category names already exist");
+      }
+      throw error;
+    }
   }
 };
 ipcMain.handle("categories:getAll", async () => {
@@ -587,6 +966,106 @@ ipcMain.handle("categories:delete", async (_, id) => {
 ipcMain.handle("categories:nameExists", async (_, name, excludeId = null) => {
   return await CategoryController.nameExists(name, excludeId);
 });
+const validateExam = (examData) => {
+  const errors = [];
+  if (!examData) {
+    return {
+      isValid: false,
+      errors: ["Los datos del examen son requeridos"]
+    };
+  }
+  const { name, description, duration_minutes: durationMinutes } = examData;
+  if (!name || typeof name !== "string") {
+    errors.push("El nombre del examen es requerido");
+  } else {
+    const trimmedName = name.trim();
+    if (trimmedName.length === 0) {
+      errors.push("El nombre del examen no puede estar vacío");
+    } else if (trimmedName.length < 3) {
+      errors.push("El nombre del examen debe tener al menos 3 caracteres");
+    } else if (trimmedName.length > 200) {
+      errors.push("El nombre del examen no puede exceder 200 caracteres");
+    }
+  }
+  if (description !== null && description !== void 0) {
+    if (typeof description !== "string") {
+      errors.push("La descripción debe ser una cadena de texto");
+    } else if (description.trim().length > 1e3) {
+      errors.push("La descripción no puede exceder 1000 caracteres");
+    }
+  }
+  if (durationMinutes !== null && durationMinutes !== void 0) {
+    const duration = Number(durationMinutes);
+    if (!Number.isInteger(duration)) {
+      errors.push("La duración debe ser un número entero");
+    } else if (duration <= 0) {
+      errors.push("La duración debe ser mayor a 0 minutos");
+    } else if (duration > 1440) {
+      errors.push("La duración no puede exceder 1440 minutos (24 horas)");
+    } else if (duration < 5) {
+      errors.push("La duración debe ser de al menos 5 minutos");
+    }
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+const validateExamUpdate = (updateData) => {
+  if (!updateData || Object.keys(updateData).length === 0) {
+    return {
+      isValid: false,
+      errors: ["Debe proporcionar al menos un campo para actualizar"]
+    };
+  }
+  const validationData = {
+    name: updateData.name || "Examen temporal",
+    // Valor por defecto para validación
+    description: updateData.description,
+    duration_minutes: updateData.duration_minutes
+  };
+  if (!updateData.name) {
+    const partialErrors = [];
+    if (updateData.description !== void 0) {
+      if (updateData.description !== null && typeof updateData.description !== "string") {
+        partialErrors.push("La descripción debe ser una cadena de texto");
+      } else if (updateData.description && updateData.description.trim().length > 1e3) {
+        partialErrors.push("La descripción no puede exceder 1000 caracteres");
+      }
+    }
+    if (updateData.duration_minutes !== void 0) {
+      if (updateData.duration_minutes !== null) {
+        const duration = Number(updateData.duration_minutes);
+        if (!Number.isInteger(duration)) {
+          partialErrors.push("La duración debe ser un número entero");
+        } else if (duration <= 0) {
+          partialErrors.push("La duración debe ser mayor a 0 minutos");
+        } else if (duration > 1440) {
+          partialErrors.push("La duración no puede exceder 1440 minutos (24 horas)");
+        } else if (duration < 5) {
+          partialErrors.push("La duración debe ser de al menos 5 minutos");
+        }
+      }
+    }
+    return {
+      isValid: partialErrors.length === 0,
+      errors: partialErrors
+    };
+  }
+  return validateExam(validationData);
+};
+const validateExamId = (examId) => {
+  const errors = [];
+  if (examId === null || examId === void 0) {
+    errors.push("El ID del examen es requerido");
+  } else if (!Number.isInteger(Number(examId)) || Number(examId) <= 0) {
+    errors.push("El ID del examen debe ser un número entero positivo");
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
 const ExamController = {
   // Get all exams with associated questions
   getAll: async () => {
@@ -610,61 +1089,99 @@ const ExamController = {
   },
   // Create a new exam with associated questions
   create: async (data) => {
-    const t = await sequelize.transaction();
     try {
-      const exam = await Exam.create(
-        {
-          name: data.name,
-          description: data.description,
-          duration_minutes: data.duration_minutes
-        },
-        { transaction: t }
-      );
-      if (data.question_ids && data.question_ids.length > 0) {
-        await exam.setQuestions(data.question_ids, { transaction: t });
+      const validation = validateExam(data);
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(", "));
       }
-      await t.commit();
-      return exam;
+      const t = await sequelize.transaction();
+      try {
+        const exam = await Exam.create(
+          {
+            name: data.name.trim(),
+            description: data.description ? data.description.trim() : null,
+            duration_minutes: data.duration_minutes ? parseInt(data.duration_minutes) : null
+          },
+          { transaction: t }
+        );
+        if (data.question_ids && data.question_ids.length > 0) {
+          await exam.setQuestions(data.question_ids, { transaction: t });
+        }
+        await t.commit();
+        return exam;
+      } catch (err) {
+        await t.rollback();
+        throw err;
+      }
     } catch (err) {
-      await t.rollback();
+      console.error("ExamController: Error creando examen:", err);
       throw err;
     }
   },
   // Update an existing exam and its associated questions
   update: async (id, data) => {
-    const t = await sequelize.transaction();
     try {
-      await Exam.update(
-        {
-          name: data.name,
-          description: data.description,
-          duration_minutes: data.duration_minutes
-        },
-        { where: { exam_id: id }, transaction: t }
-      );
-      if (data.question_ids && data.question_ids.length > 0) {
-        const exam = await Exam.findByPk(id, { transaction: t });
-        await exam.setQuestions(data.question_ids, { transaction: t });
+      const idValidation = validateExamId(id);
+      if (!idValidation.isValid) {
+        throw new Error(idValidation.errors.join(", "));
       }
-      await t.commit();
-      return { message: "Exam updated successfully" };
+      const updateValidation = validateExamUpdate(data);
+      if (!updateValidation.isValid) {
+        throw new Error(updateValidation.errors.join(", "));
+      }
+      const t = await sequelize.transaction();
+      try {
+        const existingExam = await Exam.findByPk(id, { transaction: t });
+        if (!existingExam) {
+          throw new Error("El examen no existe");
+        }
+        await Exam.update(
+          {
+            name: data.name ? data.name.trim() : existingExam.name,
+            description: data.description !== void 0 ? data.description ? data.description.trim() : null : existingExam.description,
+            duration_minutes: data.duration_minutes !== void 0 ? data.duration_minutes ? parseInt(data.duration_minutes) : null : existingExam.duration_minutes
+          },
+          { where: { exam_id: id }, transaction: t }
+        );
+        if (data.question_ids && data.question_ids.length > 0) {
+          const exam = await Exam.findByPk(id, { transaction: t });
+          await exam.setQuestions(data.question_ids, { transaction: t });
+        }
+        await t.commit();
+        return { message: "Exam updated successfully" };
+      } catch (err) {
+        await t.rollback();
+        throw err;
+      }
     } catch (err) {
-      await t.rollback();
+      console.error("ExamController: Error actualizando examen:", err);
       throw err;
     }
   },
   // Delete an exam by ID
   delete: async (id) => {
-    const t = await sequelize.transaction();
     try {
-      const result = await Exam.destroy({
-        where: { exam_id: id },
-        transaction: t
-      });
-      await t.commit();
-      return result > 0 ? { message: "Exam deleted successfully" } : null;
+      const idValidation = validateExamId(id);
+      if (!idValidation.isValid) {
+        throw new Error(idValidation.errors.join(", "));
+      }
+      const t = await sequelize.transaction();
+      try {
+        const result = await Exam.destroy({
+          where: { exam_id: id },
+          transaction: t
+        });
+        if (result === 0) {
+          throw new Error("El examen no existe");
+        }
+        await t.commit();
+        return { message: "Exam deleted successfully" };
+      } catch (err) {
+        await t.rollback();
+        throw err;
+      }
     } catch (err) {
-      await t.rollback();
+      console.error("ExamController: Error eliminando examen:", err);
       throw err;
     }
   },
@@ -1001,7 +1518,10 @@ ${resumen}
 };
 ipcMain.handle("ai:extractPdfText", async (_, pdfBuffer) => {
   try {
-    console.log("AI IPC: Recibida solicitud de extracción de PDF, buffer size:", pdfBuffer.byteLength);
+    console.log(
+      "AI IPC: Recibida solicitud de extracción de PDF, buffer size:",
+      pdfBuffer.byteLength
+    );
     const result = await AIController.extractPdfText(pdfBuffer);
     console.log("AI IPC: Extracción completada exitosamente");
     return result;
@@ -1106,6 +1626,21 @@ ipcMain.handle("userAnswers:create", async (event, data) => {
 ipcMain.handle("userAnswers:delete", async (event, resultId, questionId) => {
   return await UserAnswerController.delete(resultId, questionId);
 });
+function getLogoPath() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, "Logo.png");
+  } else {
+    return path.join(process.env.VITE_PUBLIC, "Logo.png");
+  }
+}
+ipcMain.handle("resources:getLogoPath", async () => {
+  try {
+    return getLogoPath();
+  } catch (error) {
+    console.error("Error getting logo path:", error);
+    throw error;
+  }
+});
 const __dirname = path$1.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path$1.join(__dirname, "..");
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
@@ -1123,7 +1658,6 @@ function createWindow() {
     center: true,
     show: false,
     // Don't show until ready-to-show
-    icon: path$1.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
       preload: path$1.join(__dirname, "preload.mjs"),
       nodeIntegration: false,

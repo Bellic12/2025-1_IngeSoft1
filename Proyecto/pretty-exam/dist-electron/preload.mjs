@@ -62,6 +62,9 @@ electron.contextBridge.exposeInMainWorld("userAnswerAPI", {
   create: (data) => electron.ipcRenderer.invoke("userAnswers:create", data),
   delete: (resultId, questionId) => electron.ipcRenderer.invoke("userAnswers:delete", resultId, questionId)
 });
+electron.contextBridge.exposeInMainWorld("resourcesAPI", {
+  getLogoPath: () => electron.ipcRenderer.invoke("resources:getLogoPath")
+});
 electron.contextBridge.exposeInMainWorld("aiAPI", {
   extractPdfText: (buffer) => electron.ipcRenderer.invoke("ai:extractPdfText", buffer),
   generateQuestionsFromPDF: (data) => electron.ipcRenderer.invoke("ai:generateQuestionsFromPDF", data),

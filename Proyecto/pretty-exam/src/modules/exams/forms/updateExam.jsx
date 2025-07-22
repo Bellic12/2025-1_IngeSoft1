@@ -74,7 +74,7 @@ const UpdateExam = ({ exam, fetchExams }) => {
       handleCloseModal()
     } catch (error) {
       console.error('Error al actualizar el examen:', error)
-      
+
       // Extraer mensaje de error del backend
       let errorMessage = error.message || 'Error desconocido al actualizar el examen'
 
