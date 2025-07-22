@@ -1,7 +1,9 @@
 import { useEffect, useState, useRef } from 'react'
-import { X, Plus, Sparkles } from 'lucide-react'
+import { X, Plus, Sparkles, Filter } from 'lucide-react'
 import { toast } from 'react-toastify'
 import CreateQuestion from './createQuestion'
+import AIQuestionGenerator from '../aiQuestionGenerator'
+import CategoryFilter from '../CategoryFilter'
 
 const AddQuestionsModal = ({ examId, onClose, onQuestionsAdded }) => {
   const [allQuestions, setAllQuestions] = useState([])
@@ -10,16 +12,32 @@ const AddQuestionsModal = ({ examId, onClose, onQuestionsAdded }) => {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState('')
+  const [selectedCategories, setSelectedCategories] = useState([])
+  const [showCategoryFilter, setShowCategoryFilter] = useState(false)
   const [showCreateQuestion, setShowCreateQuestion] = useState(false)
+  const [showAIGenerator, setShowAIGenerator] = useState(false)
+  const [examData, setExamData] = useState(null)
   const searchInputRef = useRef(null)
 
-  const fetchAllQuestions = async () => {
+  const fetchAllQuestions = async (filters = {}) => {
     try {
-      const questions = await window.questionAPI.getAll()
+      let questions
+      // If no filters, get all questions
+      if (!filters.searchTerm && (!filters.categoryIds || filters.categoryIds.length === 0)) {
+        questions = await window.questionAPI.getAll()
+      } else {
+        // Use search API with filters
+        questions = await window.questionAPI.search({
+          searchTerm: filters.searchTerm,
+          categoryIds: filters.categoryIds,
+        })
+      }
       setAllQuestions(questions)
       setFilteredQuestions(questions)
     } catch (err) {
       toast.error('Error al cargar las preguntas')
+      setAllQuestions([])
+      setFilteredQuestions([])
     }
   }
 
@@ -34,9 +52,19 @@ const AddQuestionsModal = ({ examId, onClose, onQuestionsAdded }) => {
     }
   }
 
+  const fetchExamData = async () => {
+    try {
+      const exam = await window.examAPI.getById(examId)
+      setExamData(exam)
+    } catch (err) {
+      console.error('Error al cargar datos del examen:', err)
+      setExamData(null)
+    }
+  }
+
   const fetchData = async () => {
     setLoading(true)
-    await Promise.all([fetchAllQuestions(), fetchExamQuestions()])
+    await Promise.all([fetchAllQuestions(), fetchExamQuestions(), fetchExamData()])
     setLoading(false)
   }
 
@@ -59,23 +87,34 @@ const AddQuestionsModal = ({ examId, onClose, onQuestionsAdded }) => {
     }
   }, [])
 
-  // Filter questions based on search term and type
+  // Debounced search function
+  const performSearch = async () => {
+    const filters = {
+      searchTerm: searchTerm.trim(),
+      categoryIds: selectedCategories,
+    }
+    await fetchAllQuestions(filters)
+  }
+
+  // Effect for search term and category changes (with debounce)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      performSearch()
+    }, 300) // 300ms debounce
+
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm, selectedCategories])
+
+  // Filter questions based on type (local filter)
   useEffect(() => {
     let filtered = allQuestions
-
-    if (searchTerm) {
-      const normalizedSearchTerm = normalizeText(searchTerm)
-      filtered = filtered.filter(question =>
-        normalizeText(question.text || '').includes(normalizedSearchTerm)
-      )
-    }
 
     if (selectedType) {
       filtered = filtered.filter(question => question.type === selectedType)
     }
 
     setFilteredQuestions(filtered)
-  }, [allQuestions, searchTerm, selectedType])
+  }, [allQuestions, selectedType])
 
   const handleQuestionSelect = question => {
     setSelectedQuestions(prev => {
@@ -127,14 +166,31 @@ const AddQuestionsModal = ({ examId, onClose, onQuestionsAdded }) => {
 
   const handleQuestionCreated = () => {
     setShowCreateQuestion(false)
-    fetchAllQuestions() // Refresh the questions list
+    // Refresh the questions list with current filters
+    fetchAllQuestions({
+      searchTerm: searchTerm.trim(),
+      categoryIds: selectedCategories,
+    })
   }
 
-  const normalizeText = text => {
-    return text
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
+  const handleOpenAIGenerator = () => {
+    setShowAIGenerator(true)
+  }
+
+  const handleCloseAIGenerator = () => {
+    setShowAIGenerator(false)
+  }
+
+  const handleQuestionsGeneratedByAI = async () => {
+    // Refrescar la lista de preguntas después de que se generen con IA
+    await fetchAllQuestions({
+      searchTerm: searchTerm.trim(),
+      categoryIds: selectedCategories,
+    })
+    await fetchExamQuestions() // También refrescar las preguntas del examen
+    setShowAIGenerator(false)
+    // Notificar al componente padre que se agregaron preguntas
+    onQuestionsAdded()
   }
 
   return (
@@ -191,6 +247,20 @@ const AddQuestionsModal = ({ examId, onClose, onQuestionsAdded }) => {
               <option value="multiple_choice">Opción múltiple</option>
               <option value="true_false">Verdadero/Falso</option>
             </select>
+
+            {/* Category filter button */}
+            <button
+              className="btn btn-outline border-gray-600 w-full lg:w-auto"
+              onClick={() => setShowCategoryFilter(true)}
+            >
+              <Filter className="w-4 h-4" />
+              Filtrar por Categoría
+              {selectedCategories.length > 0 && (
+                <span className="badge badge-primary badge-sm ml-2">
+                  {selectedCategories.length}
+                </span>
+              )}
+            </button>
           </div>
         </div>
 
@@ -240,10 +310,7 @@ const AddQuestionsModal = ({ examId, onClose, onQuestionsAdded }) => {
               <Plus className="w-4 h-4" />
               Crear Pregunta
             </button>
-            <button
-              className="btn btn-sm btn-secondary"
-              onClick={() => toast.info('Funcionalidad de IA próximamente')}
-            >
+            <button className="btn btn-sm btn-secondary" onClick={handleOpenAIGenerator}>
               <Sparkles className="w-4 h-4" />
               Generar con IA
             </button>
@@ -279,6 +346,25 @@ const AddQuestionsModal = ({ examId, onClose, onQuestionsAdded }) => {
           </div>
         </div>
       )}
+
+      {/* AI Question Generator Modal */}
+      {showAIGenerator && examData && (
+        <AIQuestionGenerator
+          isOpen={showAIGenerator}
+          onClose={handleCloseAIGenerator}
+          onQuestionsGenerated={handleQuestionsGeneratedByAI}
+          examId={examId}
+          examData={examData}
+        />
+      )}
+
+      {/* Category Filter Modal */}
+      <CategoryFilter
+        isOpen={showCategoryFilter}
+        onClose={() => setShowCategoryFilter(false)}
+        selectedCategories={selectedCategories}
+        onCategorySelect={setSelectedCategories}
+      />
     </div>
   )
 }

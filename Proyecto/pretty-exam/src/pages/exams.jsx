@@ -65,14 +65,19 @@ const Exams = () => {
   }, [])
 
   return (
-    <div className="flex flex-col p-4 max-h-screen overflow-hidden">
-      {/* Header with search - Fixed */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-4 flex-shrink-0">
-        <h1 className="text-3xl font-bold">Exámenes</h1>
+    <div className="flex flex-col gap-4">
+      {/* Header with search */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex flex-col">
+          <h1 className="text-3xl font-bold">Exámenes</h1>
+          <p className="text-base-content/70 text-lg mt-2">
+            Arma tus exámenes o hazlos tú mismo a modo de práctica
+          </p>
+        </div>
 
-        <div className="flex gap-4 w-full sm:w-auto">
+        <div className="flex gap-4 w-full lg:w-auto">
           {/* Search bar */}
-          <label className="input flex-1 sm:w-80">
+          <label className="input flex-1 sm:w-100">
             <svg
               className="h-[1em] opacity-50"
               xmlns="http://www.w3.org/2000/svg"
@@ -103,26 +108,24 @@ const Exams = () => {
         </div>
       </div>
 
-      {/* Content - Scrollable with calculated height */}
-      <div style={{ height: 'calc(100vh - 200px)' }} className="overflow-hidden">
+      {/* Content */}
+      <div className="flex flex-col gap-4 w-full">
         {loading && (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center py-8">
             <span className="loading loading-spinner loading-xl" />
           </div>
         )}
         {error && (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center py-8">
             <p className="error">Error: {error}</p>
           </div>
         )}
         {!loading && !error && (
-          <div className="h-full overflow-y-auto overflow-x-hidden pr-2">
-            <div className="flex flex-col gap-4 pb-20">
-              {filteredExams.map(exam => (
-                <Exam key={exam.exam_id} exam={exam} fetchExams={fetchExams} />
-              ))}
-            </div>
-          </div>
+          <>
+            {filteredExams.map(exam => (
+              <Exam key={exam.exam_id} exam={exam} fetchExams={fetchExams} />
+            ))}
+          </>
         )}
       </div>
 

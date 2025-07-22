@@ -1,7 +1,6 @@
-import { Tag, Edit2 } from 'lucide-react'
+import { Tag, Edit2, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
-import QuestionFactory from '../../factories/QuestionFactory'
 import CategoryFilter from '../CategoryFilter'
 
 const getInitialOptions = type =>
@@ -20,6 +19,7 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
   const [options, setOptions] = useState(getInitialOptions('multiple_choice'))
   const [loading, setLoading] = useState(false)
   const [formError, setFormError] = useState('')
+  const [formErrors, setFormErrors] = useState([])
   const [showCategorySelector, setShowCategorySelector] = useState(false)
   const [editingCategoryId, setEditingCategoryId] = useState(null)
   const [, setModalWasOpen] = useState(false)
@@ -44,10 +44,23 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
 
   const handleAddOption = () => {
     setOptions([...options, { text: '', isCorrect: false }])
+    // Limpiar errores cuando el usuario agregue opciones
+    if (formError) setFormError('')
+    if (formErrors.length > 0) setFormErrors([])
   }
 
   const handleOnChangeType = event => {
     setType(event.target.value)
+    // Limpiar errores cuando el usuario cambie el tipo
+    if (formError) setFormError('')
+    if (formErrors.length > 0) setFormErrors([])
+  }
+
+  const handleTextChange = e => {
+    setText(e.target.value)
+    // Limpiar errores cuando el usuario empiece a escribir
+    if (formError) setFormError('')
+    if (formErrors.length > 0) setFormErrors([])
   }
 
   const handleOnSelectOption = (e, index) => {
@@ -69,6 +82,9 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
     const newOptions = [...options]
     newOptions[index] = { ...newOptions[index], text: e.target.value }
     setOptions(newOptions)
+    // Limpiar errores cuando el usuario escriba en las opciones
+    if (formError) setFormError('')
+    if (formErrors.length > 0) setFormErrors([])
   }
 
   const handleRemoveOption = index => {
@@ -82,6 +98,7 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
     setOptions(getInitialOptions('multiple_choice'))
     setLoading(false)
     setFormError('')
+    setFormErrors([])
   }
 
   const getCurrentCategoryName = () => {
@@ -93,19 +110,22 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
   const handleSubmit = async event => {
     event.preventDefault()
     setFormError('')
+    setFormErrors([])
 
     try {
-      const questionObj = QuestionFactory.createQuestion(type, {
+      // Usar directamente los datos sin validación local
+      const questionData = {
         text,
+        type,
         category_id: categoryId,
         options: options.map(opt => ({
           text: opt.text,
-          is_correct: opt.isCorrect,
+          isCorrect: opt.isCorrect,
         })),
-      })
-      questionObj.validate()
+      }
+
       setLoading(true)
-      await window.questionAPI.create(questionObj.toAPIFormat())
+      await window.questionAPI.create(questionData)
       resetForm()
       if (onClose) {
         onClose()
@@ -113,7 +133,26 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
       toast.success('Pregunta creada exitosamente')
       fetchQuestions()
     } catch (error) {
-      setFormError(error.message)
+      // Extraer el mensaje de error específico del controlador
+      let errorMessage = error.message || 'Error al crear pregunta'
+
+      // Si el error viene del IPC de Electron, extraer solo el mensaje real
+      if (errorMessage.includes('Error invoking remote method')) {
+        const match = errorMessage.match(/Error: (.+)$/)
+        if (match) {
+          errorMessage = match[1]
+        }
+      }
+
+      // Verificar si el mensaje contiene múltiples errores separados por comas
+      if (errorMessage.includes(', ')) {
+        // Dividir por comas y limpiar espacios
+        const errors = errorMessage.split(', ').map(err => err.trim())
+        setFormErrors(errors)
+      } else {
+        // Un solo error
+        setFormError(errorMessage)
+      }
       setLoading(false)
     }
   }
@@ -121,7 +160,70 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
   return (
     <>
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-        {formError && <div className="alert alert-error">{formError}</div>}
+        {/* Mostrar errores únicos */}
+        {formError && (
+          <div className="alert alert-error">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="stroke-current shrink-0 h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">Error de validación</span>
+              <span className="text-sm">{formError}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFormError('')}
+              className="btn btn-sm btn-ghost btn-square"
+              title="Cerrar mensaje de error"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Mostrar múltiples errores como alertas separadas */}
+        {formErrors.map((error, index) => (
+          <div key={index} className="alert alert-error">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="stroke-current shrink-0 h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">Error de validación</span>
+              <span className="text-sm">{error}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const newErrors = formErrors.filter((_, i) => i !== index)
+                setFormErrors(newErrors)
+              }}
+              className="btn btn-sm btn-ghost btn-square"
+              title="Cerrar mensaje de error"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
 
         {/* Pregunta */}
         <div className="form-control flex flex-col gap-2">
@@ -131,10 +233,9 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
           <input
             type="text"
             placeholder="Escribe la pregunta aquí"
-            className="input input-bordered w-full"
+            className={`input w-full ${formError || formErrors.length > 0 ? 'input-error' : ''}`}
             value={text}
-            onChange={e => setText(e.target.value)}
-            required
+            onChange={handleTextChange}
           />
         </div>
 
@@ -145,11 +246,7 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
             <label className="label">
               <span className="label-text">Tipo de pregunta</span>
             </label>
-            <select
-              className="select select-bordered w-full"
-              value={type}
-              onChange={handleOnChangeType}
-            >
+            <select className="select w-full" value={type} onChange={handleOnChangeType}>
               <option value="multiple_choice">Opción múltiple</option>
               <option value="true_false">Verdadero/Falso</option>
             </select>
@@ -211,10 +308,9 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
                 <input
                   type="text"
                   placeholder={`Opción ${index + 1}`}
-                  className="input input-bordered w-full"
+                  className={`input w-full ${formError ? 'input-error' : ''}`}
                   value={option.text}
                   onChange={e => handleOptionTextChange(e, index)}
-                  required
                 />
                 <input
                   type="checkbox"
@@ -223,7 +319,7 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
                   onChange={e => handleOnSelectOption(e, index)}
                 />
                 <button
-                  className="btn btn-secondary btn-sm"
+                  className="btn btn-primary btn-outline btn-sm rounded-xl"
                   type="button"
                   onClick={() => handleRemoveOption(index)}
                 >
@@ -236,7 +332,7 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  className="input input-bordered w-full bg-green-800"
+                  className="input w-full bg-green-800"
                   value="Verdadero"
                   readOnly
                 />
@@ -249,12 +345,7 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
                 />
               </div>
               <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  className="input input-bordered w-full bg-red-800"
-                  value="Falso"
-                  readOnly
-                />
+                <input type="text" className="input w-full bg-red-800" value="Falso" readOnly />
                 <input
                   type="radio"
                   name="true_false_option_modal"
@@ -266,13 +357,13 @@ const CreateQuestion = ({ fetchQuestions, onClose }) => {
             </>
           )}
           {type === 'multiple_choice' && (
-            <button className="btn btn-secondary" type="button" onClick={handleAddOption}>
+            <button className="btn btn-primary btn-outline" type="button" onClick={handleAddOption}>
               Añadir opción
             </button>
           )}
         </div>
 
-        <button className="btn btn-primary" type="submit" disabled={loading}>
+        <button className="btn btn-secondary btn-outline" type="submit" disabled={loading}>
           {loading ? (
             <span className="loading loading-spinner loading-sm"></span>
           ) : (

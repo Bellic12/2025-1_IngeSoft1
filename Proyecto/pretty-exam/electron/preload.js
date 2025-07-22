@@ -61,13 +61,6 @@ contextBridge.exposeInMainWorld('categoryAPI', {
   nameExists: (name, excludeId) => ipcRenderer.invoke('categories:nameExists', name, excludeId),
 })
 
-// AI API
-contextBridge.exposeInMainWorld('aiAPI', {
-  explainQuestion: (questionId, optionSelectedId) =>
-    ipcRenderer.invoke('ai:explainQuestion', questionId, optionSelectedId),
-  feedbackExam: (examId, resultId) => ipcRenderer.invoke('ai:feedbackExam', examId, resultId),
-})
-
 // Result API
 contextBridge.exposeInMainWorld('resultAPI', {
   getAll: () => ipcRenderer.invoke('results:getAll'),
@@ -89,4 +82,14 @@ contextBridge.exposeInMainWorld('userAnswerAPI', {
 // Resources API
 contextBridge.exposeInMainWorld('resourcesAPI', {
   getLogoPath: () => ipcRenderer.invoke('resources:getLogoPath'),
+})
+
+// AI API
+contextBridge.exposeInMainWorld('aiAPI', {
+  extractPdfText: buffer => ipcRenderer.invoke('ai:extractPdfText', buffer),
+  generateQuestionsFromPDF: data => ipcRenderer.invoke('ai:generateQuestionsFromPDF', data),
+  generateQuestions: data => ipcRenderer.invoke('ai:generateQuestions', data),
+  explainQuestion: (questionId, optionSelectedId) =>
+    ipcRenderer.invoke('ai:explainQuestion', questionId, optionSelectedId),
+  feedbackExam: (examId, resultId) => ipcRenderer.invoke('ai:feedbackExam', examId, resultId),
 })

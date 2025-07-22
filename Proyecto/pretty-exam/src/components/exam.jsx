@@ -47,20 +47,22 @@ const Exam = ({ exam, fetchExams }) => {
 
   return (
     <div
-      className="card bg-base-200 shadow-xl border border-base-300 hover:shadow-2xl transition-shadow duration-300 cursor-pointer"
+      className="card bg-base-300 shadow-xl border border-base-300 hover:shadow-2xl transition-shadow duration-300 cursor-pointer"
       onClick={handleExamClick}
     >
       <div className="card-body p-6">
         {/* Header with action buttons */}
         <div className="flex justify-between items-start mb-4">
           <div className="flex-1">
-            <h2 className="card-title text-xl font-bold text-base-content mb-2">{exam?.name}</h2>
+            <h2 className="card-title text-xl font-bold text-base-content mb-2 line-clamp-1">
+              {exam?.name}
+            </h2>
           </div>
 
           {/* Action buttons */}
           <div className="flex gap-2" onClick={e => e.stopPropagation()}>
             <button
-              className="btn btn-success btn-sm btn-circle"
+              className="btn btn-outline btn-success btn-square btn-sm"
               onClick={handleStartSimulation}
               title="Iniciar simulación"
             >

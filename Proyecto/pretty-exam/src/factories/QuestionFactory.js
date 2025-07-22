@@ -16,6 +16,7 @@ class MultipleChoiceQuestion {
     this.text = data.text
     this.type = 'multiple_choice'
     this.category_id = data.category_id || 1
+    this.source = data.source || 'manual'
     this.options = data.options || [{ text: '', is_correct: false }]
   }
 
@@ -33,6 +34,7 @@ class MultipleChoiceQuestion {
       text: this.text,
       type: this.type,
       category_id: this.category_id,
+      source: this.source,
       options: this.options.map(opt => ({
         text: opt.text,
         is_correct: opt.is_correct,
@@ -46,6 +48,7 @@ class TrueFalseQuestion {
     this.text = data.text
     this.type = 'true_false'
     this.category_id = data.category_id || 1
+    this.source = data.source || 'manual'
     this.options = data.options
       ? [
           {
@@ -73,6 +76,7 @@ class TrueFalseQuestion {
       text: this.text,
       type: this.type,
       category_id: this.category_id,
+      source: this.source,
       options: this.options.map(opt => ({
         text: opt.text,
         is_correct: opt.is_correct,

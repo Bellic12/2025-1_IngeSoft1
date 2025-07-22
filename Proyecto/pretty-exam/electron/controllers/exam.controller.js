@@ -1,5 +1,6 @@
 import sequelize from '../config/database'
 import { Exam, Question, Category, Option } from '../models/index'
+import { validateExam, validateExamUpdate, validateExamId } from '../validations/exam.validation.js'
 
 const ExamController = {
   // Get all exams with associated questions
@@ -26,67 +27,127 @@ const ExamController = {
 
   // Create a new exam with associated questions
   create: async data => {
-    const t = await sequelize.transaction()
     try {
-      const exam = await Exam.create(
-        {
-          name: data.name,
-          description: data.description,
-          duration_minutes: data.duration_minutes,
-        },
-        { transaction: t }
-      )
-
-      if (data.question_ids && data.question_ids.length > 0) {
-        await exam.setQuestions(data.question_ids, { transaction: t })
+      // Validar los datos del examen
+      const validation = validateExam(data)
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(', '))
       }
 
-      await t.commit()
-      return exam
+      const t = await sequelize.transaction()
+      try {
+        const exam = await Exam.create(
+          {
+            name: data.name.trim(),
+            description: data.description ? data.description.trim() : null,
+            duration_minutes: data.duration_minutes ? parseInt(data.duration_minutes) : null,
+          },
+          { transaction: t }
+        )
+
+        if (data.question_ids && data.question_ids.length > 0) {
+          await exam.setQuestions(data.question_ids, { transaction: t })
+        }
+
+        await t.commit()
+        return exam
+      } catch (err) {
+        await t.rollback()
+        throw err
+      }
     } catch (err) {
-      await t.rollback()
+      console.error('ExamController: Error creando examen:', err)
       throw err
     }
   },
 
   // Update an existing exam and its associated questions
   update: async (id, data) => {
-    const t = await sequelize.transaction()
     try {
-      await Exam.update(
-        {
-          name: data.name,
-          description: data.description,
-          duration_minutes: data.duration_minutes,
-        },
-        { where: { exam_id: id }, transaction: t }
-      )
-
-      if (data.question_ids && data.question_ids.length > 0) {
-        const exam = await Exam.findByPk(id, { transaction: t })
-        await exam.setQuestions(data.question_ids, { transaction: t })
+      // Validar el ID del examen
+      const idValidation = validateExamId(id)
+      if (!idValidation.isValid) {
+        throw new Error(idValidation.errors.join(', '))
       }
 
-      await t.commit()
-      return { message: 'Exam updated successfully' }
+      // Validar los datos de actualización
+      const updateValidation = validateExamUpdate(data)
+      if (!updateValidation.isValid) {
+        throw new Error(updateValidation.errors.join(', '))
+      }
+
+      const t = await sequelize.transaction()
+      try {
+        // Verificar que el examen existe
+        const existingExam = await Exam.findByPk(id, { transaction: t })
+        if (!existingExam) {
+          throw new Error('El examen no existe')
+        }
+
+        await Exam.update(
+          {
+            name: data.name ? data.name.trim() : existingExam.name,
+            description:
+              data.description !== undefined
+                ? data.description
+                  ? data.description.trim()
+                  : null
+                : existingExam.description,
+            duration_minutes:
+              data.duration_minutes !== undefined
+                ? data.duration_minutes
+                  ? parseInt(data.duration_minutes)
+                  : null
+                : existingExam.duration_minutes,
+          },
+          { where: { exam_id: id }, transaction: t }
+        )
+
+        if (data.question_ids && data.question_ids.length > 0) {
+          const exam = await Exam.findByPk(id, { transaction: t })
+          await exam.setQuestions(data.question_ids, { transaction: t })
+        }
+
+        await t.commit()
+        return { message: 'Exam updated successfully' }
+      } catch (err) {
+        await t.rollback()
+        throw err
+      }
     } catch (err) {
-      await t.rollback()
+      console.error('ExamController: Error actualizando examen:', err)
       throw err
     }
   },
 
   // Delete an exam by ID
   delete: async id => {
-    const t = await sequelize.transaction()
     try {
-      const result = await Exam.destroy({
-        where: { exam_id: id },
-        transaction: t,
-      })
-      await t.commit()
-      return result > 0 ? { message: 'Exam deleted successfully' } : null
+      // Validar el ID del examen
+      const idValidation = validateExamId(id)
+      if (!idValidation.isValid) {
+        throw new Error(idValidation.errors.join(', '))
+      }
+
+      const t = await sequelize.transaction()
+      try {
+        const result = await Exam.destroy({
+          where: { exam_id: id },
+          transaction: t,
+        })
+        
+        if (result === 0) {
+          throw new Error('El examen no existe')
+        }
+        
+        await t.commit()
+        return { message: 'Exam deleted successfully' }
+      } catch (err) {
+        await t.rollback()
+        throw err
+      }
     } catch (err) {
-      await t.rollback()
+      console.error('ExamController: Error eliminando examen:', err)
       throw err
     }
   },

@@ -41,7 +41,7 @@ const Layout = () => {
         <aside
           className={`
             bg-base-300 w-full lg:w-64 flex-shrink-0 z-40
-            lg:sticky lg:top-0 lg:h-screen
+            fixed lg:sticky lg:top-0 h-screen
             transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             lg:translate-x-0 transition-transform duration-300 ease-in-out
           `}
