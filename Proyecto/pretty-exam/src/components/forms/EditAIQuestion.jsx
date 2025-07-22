@@ -18,13 +18,25 @@ const EditAIQuestion = ({ question, onSave, onCancel, categories }) => {
   const initializeForm = () => {
     setText(question.text || '')
     setType(question.type || 'multiple_choice')
-    setOptions(
-      question.options?.map(opt =>
-        typeof opt === 'object'
-          ? { text: opt.text, isCorrect: opt.is_correct ?? opt.isCorrect }
-          : { text: opt, isCorrect: false }
-      ) || []
-    )
+
+    // Manejar opciones según el tipo de pregunta
+    if (question.type === 'true_false') {
+      // Para preguntas de verdadero/falso, crear las opciones basadas en correctAnswer
+      setOptions([
+        { text: 'Verdadero', isCorrect: question.correctAnswer === true },
+        { text: 'Falso', isCorrect: question.correctAnswer === false },
+      ])
+    } else {
+      // Para preguntas de opción múltiple, usar las opciones existentes
+      setOptions(
+        question.options?.map(opt =>
+          typeof opt === 'object'
+            ? { text: opt.text, isCorrect: opt.is_correct ?? opt.isCorrect }
+            : { text: opt, isCorrect: false }
+        ) || []
+      )
+    }
+
     setCategoryName(question.category || '')
     setCategoryId(null)
     setFormError('')
@@ -106,6 +118,10 @@ const EditAIQuestion = ({ question, onSave, onCancel, categories }) => {
       setFormError('La pregunta no puede estar vacía.')
       return
     }
+    if (text.length < 10) {
+      setFormError('La pregunta debe tener al menos 10 caracteres.')
+      return
+    }
     if (type === 'multiple_choice' && options.length < 2) {
       setFormError('Debe haber al menos dos opciones.')
       return
@@ -172,7 +188,6 @@ const EditAIQuestion = ({ question, onSave, onCancel, categories }) => {
               className="input w-full"
               value={text}
               onChange={e => setText(e.target.value)}
-              required
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -239,7 +254,6 @@ const EditAIQuestion = ({ question, onSave, onCancel, categories }) => {
                     className="input w-full"
                     value={option.text}
                     onChange={e => handleOptionTextChange(e, index)}
-                    required
                   />
                   <input
                     type="checkbox"

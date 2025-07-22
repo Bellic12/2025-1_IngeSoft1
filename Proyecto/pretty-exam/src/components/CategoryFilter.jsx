@@ -36,7 +36,18 @@ const CategoryFilter = ({
         }
       }
     } catch (err) {
-      setError('Error al cargar categorías')
+      // Extraer el mensaje de error específico del controlador
+      let errorMessage = err.message || 'Error al cargar categorías'
+
+      // Si el error viene del IPC de Electron, extraer solo el mensaje real
+      if (errorMessage.includes('Error invoking remote method')) {
+        const match = errorMessage.match(/Error: (.+)$/)
+        if (match) {
+          errorMessage = match[1]
+        }
+      }
+
+      setError(errorMessage)
       console.error(err)
     }
     setLoading(false)
@@ -101,20 +112,45 @@ const CategoryFilter = ({
     setError('')
   }
 
+  const handleEditingNameChange = e => {
+    setEditingName(e.target.value)
+    // Limpiar error cuando el usuario empiece a escribir
+    if (error) setError('')
+  }
+
+  const handleNewCategoryNameChange = e => {
+    setNewCategoryName(e.target.value)
+    // Limpiar error cuando el usuario empiece a escribir
+    if (error) setError('')
+  }
+
   const saveEdit = async () => {
-    if (!editingName.trim()) {
+    const trimmedName = editingName.trim()
+
+    if (!trimmedName) {
       setError('El nombre no puede estar vacío')
       return
     }
 
     try {
-      await window.categoryAPI.update(editingId, { name: editingName.trim() })
+      await window.categoryAPI.update(editingId, { name: trimmedName })
       await fetchCategories()
       setEditingId(null)
       setEditingName('')
       setError('')
     } catch (err) {
-      setError('Error al actualizar categoría')
+      // Extraer el mensaje de error específico del controlador
+      let errorMessage = err.message || 'Error al actualizar categoría'
+
+      // Si el error viene del IPC de Electron, extraer solo el mensaje real
+      if (errorMessage.includes('Error invoking remote method')) {
+        const match = errorMessage.match(/Error: (.+)$/)
+        if (match) {
+          errorMessage = match[1]
+        }
+      }
+
+      setError(errorMessage)
       console.error(err)
     }
   }
@@ -126,19 +162,32 @@ const CategoryFilter = ({
   }
 
   const createCategory = async () => {
-    if (!newCategoryName.trim()) {
+    const trimmedName = newCategoryName.trim()
+
+    if (!trimmedName) {
       setError('El nombre no puede estar vacío')
       return
     }
 
     try {
-      await window.categoryAPI.create({ name: newCategoryName.trim() })
+      await window.categoryAPI.create({ name: trimmedName })
       await fetchCategories()
       setIsCreating(false)
       setNewCategoryName('')
       setError('')
     } catch (err) {
-      setError('Error al crear categoría')
+      // Extraer el mensaje de error específico del controlador
+      let errorMessage = err.message || 'Error al crear categoría'
+
+      // Si el error viene del IPC de Electron, extraer solo el mensaje real
+      if (errorMessage.includes('Error invoking remote method')) {
+        const match = errorMessage.match(/Error: (.+)$/)
+        if (match) {
+          errorMessage = match[1]
+        }
+      }
+
+      setError(errorMessage)
       console.error(err)
     }
   }
@@ -189,7 +238,18 @@ const CategoryFilter = ({
       setCategoryQuestions([])
       setDeleteQuestionsToo(false)
     } catch (err) {
-      setError('Error al eliminar categoría: ' + (err.message || 'Error desconocido'))
+      // Extraer el mensaje de error específico del controlador
+      let errorMessage = err.message || 'Error desconocido'
+
+      // Si el error viene del IPC de Electron, extraer solo el mensaje real
+      if (errorMessage.includes('Error invoking remote method')) {
+        const match = errorMessage.match(/Error: (.+)$/)
+        if (match) {
+          errorMessage = match[1]
+        }
+      }
+
+      setError('Error al eliminar categoría: ' + errorMessage)
       console.error(err)
     }
   }
@@ -233,7 +293,30 @@ const CategoryFilter = ({
         {/* Error message */}
         {error && (
           <div className="mx-4 mt-2 alert alert-error">
-            <span className="text-sm">{error}</span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="stroke-current shrink-0 h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">Error de validación</span>
+              <span className="text-sm">{error}</span>
+            </div>
+            <button
+              onClick={() => setError('')}
+              className="btn btn-sm btn-ghost btn-square"
+              title="Cerrar mensaje de error"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 
@@ -266,8 +349,8 @@ const CategoryFilter = ({
                       <input
                         type="text"
                         value={editingName}
-                        onChange={e => setEditingName(e.target.value)}
-                        className="input input-sm input-bordered flex-1"
+                        onChange={handleEditingNameChange}
+                        className={`input input-sm input-bordered flex-1 ${error ? 'input-error' : ''}`}
                         onKeyDown={e => {
                           if (e.key === 'Enter') saveEdit()
                           if (e.key === 'Escape') cancelEdit()
@@ -313,9 +396,9 @@ const CategoryFilter = ({
                   <input
                     type="text"
                     value={newCategoryName}
-                    onChange={e => setNewCategoryName(e.target.value)}
+                    onChange={handleNewCategoryNameChange}
                     placeholder="Nombre de la nueva categoría"
-                    className="input input-sm input-bordered flex-1"
+                    className={`input input-sm input-bordered flex-1 ${error ? 'input-error' : ''}`}
                     onKeyDown={e => {
                       if (e.key === 'Enter') createCategory()
                       if (e.key === 'Escape') {

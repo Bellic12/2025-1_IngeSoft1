@@ -1,7 +1,6 @@
-import { Pencil, Tag, Edit2 } from 'lucide-react'
+import { Pencil, Tag, Edit2, X } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
-import QuestionFactory from '../../factories/QuestionFactory'
 import CategoryFilter from '../CategoryFilter'
 
 const getInitialOptions = (type, optionsFromQuestion) => {
@@ -28,6 +27,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(false)
   const [formError, setFormError] = useState('')
+  const [formErrors, setFormErrors] = useState([])
   const [showCategorySelector, setShowCategorySelector] = useState(false)
   const [editingCategoryId, setEditingCategoryId] = useState(null)
   const [showModal, setShowModal] = useState(false)
@@ -90,6 +90,9 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
 
   const handleOnChangeType = event => {
     setType(event.target.value)
+    // Limpiar errores cuando el usuario cambie el tipo
+    if (formError) setFormError('')
+    if (formErrors.length > 0) setFormErrors([])
   }
 
   const handleOnSelectOption = (e, index) => {
@@ -105,16 +108,32 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
       }))
       setOptions(newOptions)
     }
+    // Limpiar errores cuando el usuario seleccione opciones
+    if (formError) setFormError('')
+    if (formErrors.length > 0) setFormErrors([])
   }
 
   const handleOptionTextChange = (e, index) => {
     const newOptions = [...options]
     newOptions[index] = { ...newOptions[index], text: e.target.value }
     setOptions(newOptions)
+    // Limpiar errores cuando el usuario escriba en las opciones
+    if (formError) setFormError('')
+    if (formErrors.length > 0) setFormErrors([])
   }
 
   const handleAddOption = () => {
     setOptions([...options, { text: '', isCorrect: false }])
+    // Limpiar errores cuando el usuario agregue opciones
+    if (formError) setFormError('')
+    if (formErrors.length > 0) setFormErrors([])
+  }
+
+  const handleTextChange = e => {
+    setText(e.target.value)
+    // Limpiar errores cuando el usuario empiece a escribir
+    if (formError) setFormError('')
+    if (formErrors.length > 0) setFormErrors([])
   }
 
   const handleRemoveOption = index => {
@@ -124,31 +143,21 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
   const handleSubmit = async event => {
     event.preventDefault()
     setFormError('')
+    setFormErrors([])
 
     try {
-      const questionObj = QuestionFactory.createQuestion(type, {
-        text,
-        category_id: categoryId,
-        options: options.map(opt => ({
-          text: opt.text,
-          is_correct: opt.isCorrect,
-        })),
-      })
-
-      questionObj.validate()
-      setLoading(true)
-
-      // Send clean data without option_id to avoid foreign key issues
+      // Usar directamente los datos sin validación local
       const updateData = {
         text,
         type,
         category_id: categoryId,
         options: options.map(opt => ({
           text: opt.text,
-          is_correct: opt.isCorrect,
+          isCorrect: opt.isCorrect,
         })),
       }
 
+      setLoading(true)
       await window.questionAPI.update(question.question_id, updateData)
       toast.success('Pregunta actualizada correctamente')
       fetchQuestions()
@@ -157,27 +166,26 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
     } catch (error) {
       console.error('Error updating question:', error)
 
-      // Handle validation errors first
-      if (error.message && typeof error.message === 'string') {
-        setFormError(error.message)
-        setLoading(false)
-        return
+      // Extraer el mensaje de error específico del controlador
+      let errorMessage = error.message || 'Error al actualizar pregunta'
+
+      // Si el error viene del IPC de Electron, extraer solo el mensaje real
+      if (errorMessage.includes('Error invoking remote method')) {
+        const match = errorMessage.match(/Error: (.+)$/)
+        if (match) {
+          errorMessage = match[1]
+        }
       }
 
-      // Handle specific error types with user-friendly messages
-      let userMessage = 'Error al actualizar la pregunta'
-
-      if (error.message === 'CATEGORY_NOT_FOUND') {
-        userMessage = 'La categoría seleccionada no existe. Por favor, selecciona otra categoría.'
-      } else if (error.message === 'QUESTION_NOT_FOUND') {
-        userMessage = 'La pregunta no fue encontrada. Por favor, recarga la página.'
-      } else if (error.message === 'UPDATE_FAILED') {
-        userMessage = 'No se pudo actualizar la pregunta. Inténtalo de nuevo.'
+      // Verificar si el mensaje contiene múltiples errores separados por comas
+      if (errorMessage.includes(', ')) {
+        // Dividir por comas y limpiar espacios
+        const errors = errorMessage.split(', ').map(err => err.trim())
+        setFormErrors(errors)
+      } else {
+        // Un solo error
+        setFormError(errorMessage)
       }
-
-      // Don't show technical errors in the form, only in console
-      setFormError('')
-      toast.error(userMessage)
       setLoading(false)
     }
   }
@@ -195,6 +203,7 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
     setCategoryId(originalState.current.categoryId)
     setLoading(false)
     setFormError('')
+    setFormErrors([])
   }
 
   const handleOpenModal = async () => {
@@ -225,7 +234,72 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
               ✕
             </button>
             <h3 className="font-bold text-lg">Editar pregunta</h3>
-            {formError && <div className="alert alert-error">{formError}</div>}
+
+            {/* Mostrar errores únicos */}
+            {formError && (
+              <div className="alert alert-error">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="stroke-current shrink-0 h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">Error de validación</span>
+                  <span className="text-sm">{formError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormError('')}
+                  className="btn btn-sm btn-ghost btn-square"
+                  title="Cerrar mensaje de error"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Mostrar múltiples errores como alertas separadas */}
+            {formErrors.map((error, index) => (
+              <div key={index} className="alert alert-error">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="stroke-current shrink-0 h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">Error de validación</span>
+                  <span className="text-sm">{error}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newErrors = formErrors.filter((_, i) => i !== index)
+                    setFormErrors(newErrors)
+                  }}
+                  className="btn btn-sm btn-ghost btn-square"
+                  title="Cerrar mensaje de error"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+
             <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
               {/* Question */}
               <div className="form-control flex flex-col gap-2">
@@ -235,10 +309,9 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
                 <input
                   type="text"
                   placeholder="Escribe la pregunta aquí"
-                  className="input w-full"
+                  className={`input w-full ${formError || formErrors.length > 0 ? 'input-error' : ''}`}
                   value={text}
-                  onChange={e => setText(e.target.value)}
-                  required
+                  onChange={handleTextChange}
                 />
               </div>
               {/* Type and Category row */}
@@ -314,7 +387,6 @@ const UpdateQuestion = ({ question, fetchQuestions }) => {
                         className="input w-full"
                         value={option.text}
                         onChange={e => handleOptionTextChange(e, index)}
-                        required
                       />
                       <input
                         type="checkbox"

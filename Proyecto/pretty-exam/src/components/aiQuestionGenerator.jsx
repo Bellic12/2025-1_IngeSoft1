@@ -22,7 +22,6 @@ import {
 } from 'lucide-react'
 import pdfToText from 'react-pdftotext'
 import EditAIQuestion from './forms/EditAIQuestion'
-import QuestionFactory from '../factories/QuestionFactory'
 import { toast } from 'react-toastify'
 
 const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
@@ -42,6 +41,7 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
   const [selectedQuestions, setSelectedQuestions] = useState([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [validationErrors, setValidationErrors] = useState([])
   const fileInputRef = useRef(null)
 
   const steps = [
@@ -49,7 +49,6 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
     { id: 2, title: 'Configurar', icon: Settings },
     { id: 3, title: 'Generar', icon: Wand2 },
     { id: 4, title: 'Editar', icon: Edit3 },
-    { id: 5, title: 'Guardar', icon: Save },
   ]
 
   // Generar preguntas usando la API de Gemini con el texto de prueba
@@ -133,12 +132,11 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
   // Guardar preguntas seleccionadas
   const saveQuestions = async () => {
     setIsSaving(true)
-
+    const newValidationErrors = []
     const questionsToSave = generatedQuestions.filter(q => selectedQuestions.includes(q.id))
+    const successfullyProcessed = []
 
     try {
-      const savedQuestions = []
-
       for (const question of questionsToSave) {
         try {
           let categoryId = null
@@ -175,48 +173,84 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
             }
           }
 
-          // Crear el objeto de pregunta usando QuestionFactory
-          const questionObj = QuestionFactory.createQuestion(question.type, {
+          // Preparar datos para enviar directamente al backend (sin QuestionFactory)
+          const questionData = {
             text: question.text,
+            type: question.type,
             category_id: categoryId,
-            source: 'generated',
             options:
               question.type === 'true_false'
                 ? [
-                    { text: 'Verdadero', is_correct: question.correctAnswer === true },
-                    { text: 'Falso', is_correct: question.correctAnswer === false },
+                    { text: 'Verdadero', isCorrect: question.correctAnswer === true },
+                    { text: 'Falso', isCorrect: question.correctAnswer === false },
                   ]
-                : question.options.map(opt => ({
-                    text: typeof opt === 'object' ? opt.text : opt,
-                    is_correct: typeof opt === 'object' ? opt.is_correct || opt.isCorrect : false,
-                  })),
-          })
+                : question.options.map((opt, index) => {
+                    let isCorrect = false
 
-          // Validar la pregunta
-          questionObj.validate()
+                    if (typeof opt === 'object') {
+                      // Si la opción es un objeto, verificar is_correct o isCorrect
+                      isCorrect = Boolean(opt.is_correct || opt.isCorrect)
+                    } else {
+                      // Si la opción es string, verificar si el índice coincide con correctAnswer
+                      isCorrect = index === question.correctAnswer
+                    }
 
-          // Crear la pregunta en la base de datos
-          const createdQuestion = await window.questionAPI.create(questionObj.toAPIFormat())
-          savedQuestions.push(createdQuestion)
+                    return {
+                      text: typeof opt === 'object' ? opt.text : opt,
+                      isCorrect,
+                    }
+                  }),
+          }
+
+          // Crear la pregunta usando validaciones del backend
+          await window.questionAPI.create(questionData)
+          successfullyProcessed.push(question.id)
         } catch (questionError) {
-          toast.error(`Error guardando pregunta: ${question.text}`)
-          // Continuar con las demás preguntas en caso de error
+          console.error('Error guardando pregunta:', questionError)
+
+          // Extraer mensaje de error del backend
+          let errorMessage = questionError.message || 'Error desconocido al guardar la pregunta'
+
+          // Si el error viene del IPC de Electron, extraer solo el mensaje real
+          if (errorMessage.includes('Error invoking remote method')) {
+            const match = errorMessage.match(/Error: (.+)$/)
+            if (match) {
+              errorMessage = match[1]
+            }
+          }
+
+          // Agregar error con identificación de la pregunta
+          newValidationErrors.push({
+            questionId: question.id,
+            questionText: question.text.substring(0, 50) + '...',
+            errors: errorMessage.includes(', ')
+              ? errorMessage.split(', ').map(err => err.trim())
+              : [errorMessage],
+          })
         }
       }
 
-      console.log(
-        `${savedQuestions.length} de ${questionsToSave.length} preguntas guardadas exitosamente`
-      )
+      // Remover preguntas exitosamente procesadas de la interfaz
+      if (successfullyProcessed.length > 0) {
+        setGeneratedQuestions(prev => prev.filter(q => !successfullyProcessed.includes(q.id)))
+        setSelectedQuestions(prev => prev.filter(id => !successfullyProcessed.includes(id)))
+        toast.success(`${successfullyProcessed.length} preguntas guardadas exitosamente`)
 
-      // Llamar callback con las preguntas guardadas
-      if (onQuestionsGenerated) {
-        onQuestionsGenerated(savedQuestions)
+        // Llamar callback con las preguntas guardadas
+        if (onQuestionsGenerated) {
+          onQuestionsGenerated(successfullyProcessed)
+        }
       }
 
-      // Cerrar el modal
-      handleClose()
-      toast.success('Preguntas guardadas exitosamente')
+      // Actualizar errores de validación
+      setValidationErrors(newValidationErrors)
+
+      // Si no quedan preguntas, cerrar modal
+      if (generatedQuestions.length === successfullyProcessed.length) {
+        handleClose()
+      }
     } catch (error) {
+      console.error('Error general en saveQuestions:', error)
       toast.error('Error al guardar las preguntas. Por favor, intenta nuevamente.')
     } finally {
       setIsSaving(false)
@@ -231,6 +265,7 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
     setPdfPages(0)
     setGeneratedQuestions([])
     setSelectedQuestions([])
+    setValidationErrors([])
     setQuestionConfig({
       multipleChoice: 5,
       trueFalse: 3,
@@ -239,7 +274,7 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
   }
 
   const nextStep = async () => {
-    if (currentStep < 5) {
+    if (currentStep < 4) {
       setCurrentStep(currentStep + 1)
     }
   }
@@ -326,6 +361,42 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
               </ul>
             </div>
           </div>
+
+          {/* Errores de validación - Esquina superior derecha */}
+          {validationErrors.length > 0 && (
+            <div className="absolute top-4 right-4 z-10 w-80 max-h-[100vh] overflow-y-auto">
+              <div className="bg-error text-error-content rounded-lg shadow-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-sm flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
+                    Errores de Validación
+                  </h4>
+                  <button
+                    onClick={() => setValidationErrors([])}
+                    className="btn btn-ghost btn-xs text-error-content hover:bg-error-content/20"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {validationErrors.map((errorGroup, index) => (
+                    <div key={index} className="text-xs space-y-1">
+                      <div className="font-medium">Pregunta: {errorGroup.questionText}</div>
+                      <div className="space-y-1 pl-2">
+                        {errorGroup.errors.map((error, errorIndex) => (
+                          <div key={errorIndex} className="flex items-start gap-1">
+                            <span className="text-error-content/80">•</span>
+                            <span className="text-error-content/90">{error}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6">
@@ -737,57 +808,29 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
                     <p className="text-base-content/70">No hay preguntas generadas</p>
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* Step 5: Save Questions */}
-            {currentStep === 5 && (
-              <div className="space-y-6">
-                <div className="text-center">
-                  <h3 className="text-2xl font-bold mb-2">Guardar Preguntas</h3>
-                  <p className="text-base-content/70">
-                    Las preguntas seleccionadas se guardarán en tu banco de preguntas
-                  </p>
-                </div>
-
-                <div className="max-w-md mx-auto">
-                  <div className="text-center space-y-6">
-                    <div className="flex justify-center">
-                      <div className="w-32 h-32 rounded-full bg-gradient-to-br from-success/20 to-info/20 flex items-center justify-center">
-                        <Save className="w-16 h-16 text-success" />
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-lg mb-2">
-                        {isSaving
-                          ? `Guardando ${selectedQuestions.length} preguntas...`
-                          : `¿Guardar ${selectedQuestions.length} preguntas?`}
-                      </p>
-                      <p className="text-sm text-base-content/70 mb-4">
-                        {isSaving
-                          ? 'Añadiendo las preguntas a tu banco de preguntas'
-                          : 'Las preguntas se añadirán a tu banco de preguntas y estarán disponibles para crear exámenes.'}
-                      </p>
-                      <button
-                        onClick={saveQuestions}
-                        className="btn btn-success btn-lg"
-                        disabled={selectedQuestions.length === 0 || isSaving}
-                      >
-                        {isSaving ? (
-                          <>
-                            <span className="loading loading-spinner loading-sm"></span>
-                            Guardando Preguntas
-                          </>
-                        ) : (
-                          <>
-                            <Save className="w-5 h-5 mr-2" />
-                            Guardar Preguntas
-                          </>
-                        )}
-                      </button>
-                    </div>
+                {/* Botón de guardar preguntas */}
+                {generatedQuestions.length > 0 && (
+                  <div className="flex justify-center mt-8">
+                    <button
+                      onClick={saveQuestions}
+                      className="btn btn-success btn-lg"
+                      disabled={selectedQuestions.length === 0 || isSaving}
+                    >
+                      {isSaving ? (
+                        <>
+                          <span className="loading loading-spinner loading-sm"></span>
+                          Guardando Preguntas
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-5 h-5 mr-2" />
+                          Guardar {selectedQuestions.length} Preguntas
+                        </>
+                      )}
+                    </button>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>
@@ -812,7 +855,7 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
                 onClick={nextStep}
                 className="btn btn-primary"
                 disabled={
-                  currentStep === 5 ||
+                  currentStep === 4 ||
                   (currentStep === 1 && !(extractedText.trim().length > 0 || pdfFile)) ||
                   (currentStep === 2 &&
                     questionConfig.multipleChoice + questionConfig.trueFalse === 0) ||
