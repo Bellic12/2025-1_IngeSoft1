@@ -7,9 +7,11 @@ import AIQuestionGenerator from '../components/aiQuestionGenerator'
 
 const Questions = () => {
   const [questions, setQuestions] = useState([])
+  const [filteredQuestions, setFilteredQuestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedType, setSelectedType] = useState('')
   const [selectedCategories, setSelectedCategories] = useState([])
   const [showCategoryFilter, setShowCategoryFilter] = useState(false)
   const searchInputRef = useRef(null)
@@ -31,11 +33,13 @@ const Questions = () => {
         })
       }
       setQuestions(questions)
+      setFilteredQuestions(questions)
     } catch (err) {
       console.error('Error fetching questions:', err)
       setError(`Error al buscar preguntas: ${err.message}`)
       // Don't break the UI, show empty results instead
       setQuestions([])
+      setFilteredQuestions([])
     }
     setLoading(false)
   }
@@ -77,6 +81,17 @@ const Questions = () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [])
+
+  // Filter questions based on type (local filter)
+  useEffect(() => {
+    let filtered = questions
+
+    if (selectedType) {
+      filtered = filtered.filter(question => question.type === selectedType)
+    }
+
+    setFilteredQuestions(filtered)
+  }, [questions, selectedType])
 
   return (
     <div className="flex flex-col gap-4">
@@ -120,8 +135,22 @@ const Questions = () => {
             <kbd className="kbd kbd-sm">K</kbd>
           </label>
 
+          {/* Type filter dropdown */}
+          <select
+            className="select select-bordered w-full lg:w-48"
+            value={selectedType}
+            onChange={e => setSelectedType(e.target.value)}
+          >
+            <option value="">Todos los tipos</option>
+            <option value="multiple_choice">Opción múltiple</option>
+            <option value="true_false">Verdadero/Falso</option>
+          </select>
+
           {/* Filter button */}
-          <button className="btn btn-outline" onClick={() => setShowCategoryFilter(true)}>
+          <button
+            className="btn btn-outline border-gray-600 "
+            onClick={() => setShowCategoryFilter(true)}
+          >
             <Filter className="w-4 h-4" />
             Filtrar por Categoría
             {selectedCategories.length > 0 && (
@@ -143,7 +172,7 @@ const Questions = () => {
         {error && <p className="error">Error: {error}</p>}
         {!loading && !error && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-            {questions.map(question => (
+            {filteredQuestions.map(question => (
               <Question
                 key={question.question_id}
                 question={question}
@@ -155,7 +184,7 @@ const Questions = () => {
                 }
               />
             ))}
-            {questions.length === 0 && (
+            {filteredQuestions.length === 0 && (
               <div className="col-span-full text-center py-8 text-base-content/50">
                 No se encontraron preguntas que coincidan con los filtros
               </div>
@@ -190,7 +219,7 @@ const Questions = () => {
             // Las preguntas ya fueron guardadas en aiQuestionGenerator
             // Solo necesitamos actualizar la lista de preguntas
             console.log('Preguntas recibidas desde AI Generator:', generatedQuestions.length)
-            
+
             // Actualizar la lista de preguntas
             fetchQuestions({
               searchTerm: searchTerm.trim(),

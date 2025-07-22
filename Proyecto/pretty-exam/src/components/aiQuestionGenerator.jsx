@@ -24,7 +24,13 @@ import pdfToText from 'react-pdftotext'
 import EditAIQuestion from './forms/EditAIQuestion'
 import { toast } from 'react-toastify'
 
-const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
+const AIQuestionGenerator = ({
+  isOpen,
+  onClose,
+  onQuestionsGenerated,
+  examId = null,
+  examData = null,
+}) => {
   const [currentStep, setCurrentStep] = useState(1)
   const [pdfFile, setPdfFile] = useState(null)
   const [extractedText, setExtractedText] = useState('')
@@ -63,6 +69,13 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
         text: extractedText, // Usar el texto extraído del PDF
         multipleChoice: questionConfig.multipleChoice,
         trueFalse: questionConfig.trueFalse,
+        // Agregar información del examen si está disponible
+        ...(examData && {
+          examContext: {
+            name: examData.name,
+            description: examData.description,
+          },
+        }),
       }
 
       console.log('Configuración enviada:', config)
@@ -135,6 +148,7 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
     const newValidationErrors = []
     const questionsToSave = generatedQuestions.filter(q => selectedQuestions.includes(q.id))
     const successfullyProcessed = []
+    const createdQuestionIds = [] // Para almacenar los IDs de las preguntas creadas
 
     try {
       for (const question of questionsToSave) {
@@ -204,8 +218,13 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
           }
 
           // Crear la pregunta usando validaciones del backend
-          await window.questionAPI.create(questionData)
+          const createdQuestion = await window.questionAPI.create(questionData)
           successfullyProcessed.push(question.id)
+
+          // Almacenar el ID de la pregunta creada para asociarla al examen
+          if (createdQuestion && createdQuestion.question_id) {
+            createdQuestionIds.push(createdQuestion.question_id)
+          }
         } catch (questionError) {
           console.error('Error guardando pregunta:', questionError)
 
@@ -231,11 +250,28 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
         }
       }
 
+      // Si hay un examId y se crearon preguntas exitosamente, asociarlas al examen
+      if (examId && createdQuestionIds.length > 0) {
+        try {
+          await window.examAPI.addQuestions(examId, createdQuestionIds)
+          console.log(`${createdQuestionIds.length} preguntas asociadas al examen ${examId}`)
+        } catch (examError) {
+          console.error('Error asociando preguntas al examen:', examError)
+          toast.warning(
+            'Las preguntas se crearon pero no pudieron asociarse automáticamente al examen'
+          )
+        }
+      }
+
       // Remover preguntas exitosamente procesadas de la interfaz
       if (successfullyProcessed.length > 0) {
         setGeneratedQuestions(prev => prev.filter(q => !successfullyProcessed.includes(q.id)))
         setSelectedQuestions(prev => prev.filter(id => !successfullyProcessed.includes(id)))
-        toast.success(`${successfullyProcessed.length} preguntas guardadas exitosamente`)
+
+        const successMessage = examId
+          ? `${successfullyProcessed.length} preguntas generadas y agregadas al examen`
+          : `${successfullyProcessed.length} preguntas guardadas exitosamente`
+        toast.success(successMessage)
 
         // Llamar callback con las preguntas guardadas
         if (onQuestionsGenerated) {
@@ -327,8 +363,16 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
               <div className="flex items-center gap-3">
                 <Brain className="w-8 h-8" />
                 <div>
-                  <h2 className="text-2xl font-bold">Generador de Preguntas con IA</h2>
-                  <p className="opacity-80">Powered by Gemini AI</p>
+                  <h2 className="text-2xl font-bold">
+                    {examData
+                      ? `Generar Preguntas para: ${examData.name}`
+                      : 'Generador de Preguntas con IA'}
+                  </h2>
+                  <p className="opacity-80">
+                    {examData && examData.description
+                      ? `${examData.description} • Powered by Gemini AI`
+                      : 'Powered by Gemini AI'}
+                  </p>
                 </div>
               </div>
               <button
