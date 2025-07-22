@@ -79,6 +79,11 @@ contextBridge.exposeInMainWorld('userAnswerAPI', {
   delete: (resultId, questionId) => ipcRenderer.invoke('userAnswers:delete', resultId, questionId),
 })
 
+// Resources API
+contextBridge.exposeInMainWorld('resourcesAPI', {
+  getLogoPath: () => ipcRenderer.invoke('resources:getLogoPath'),
+})
+
 // AI API
 contextBridge.exposeInMainWorld('aiAPI', {
   extractPdfText: buffer => ipcRenderer.invoke('ai:extractPdfText', buffer),

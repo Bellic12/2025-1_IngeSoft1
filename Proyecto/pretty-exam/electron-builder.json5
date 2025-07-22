@@ -4,12 +4,23 @@
   "appId": "com.pretty-exam.id",
   "asar": true,
   "productName": "PrettyExam",
+  "icon": "public/Logo.png",
   "directories": {
     "output": "release/${version}"
   },
   "files": [
     "dist",
     "dist-electron"
+  ],
+  "extraResources": [
+    {
+      "from": "pretty_exam.db",
+      "to": "pretty_exam.db"
+    },
+    {
+      "from": "public/Logo.png",
+      "to": "Logo.png"
+    }
   ],
   "mac": {
     "target": [
@@ -18,6 +29,7 @@
     "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
   },
   "win": {
+    "icon": "public/Logo.png",
     "target": [
       {
         "target": "nsis",
