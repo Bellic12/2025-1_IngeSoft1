@@ -1,4 +1,4 @@
-import { Eye, CheckCircle } from 'lucide-react'
+import { Eye, CheckCircle, Sparkles } from 'lucide-react'
 import UpdateQuestion from './updateQuestion'
 import DeleteQuestion from './deleteQuestion'
 
@@ -43,6 +43,15 @@ const ViewQuestion = ({ question, fetchQuestions }) => {
             <div className="flex flex-wrap gap-2">
               <div className="badge badge-info font-medium">{getTypeLabel(question.type)}</div>
               <div className="badge badge-outline">{question.category?.name || 'General'}</div>
+              {/* Badge para indicar si fue generada por IA */}
+              {question.source === 'generated' && (
+                <div className="tooltip" data-tip="Generado por IA">
+                  <div className="badge badge-primary gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    IA
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex gap-2">
               <UpdateQuestion question={question} fetchQuestions={fetchQuestions} />
