@@ -178,6 +178,7 @@ const AIQuestionGenerator = ({ isOpen, onClose, onQuestionsGenerated }) => {
             text: question.text,
             type: question.type,
             category_id: categoryId,
+            source: 'generated', // Marcar como pregunta generada por IA
             options:
               question.type === 'true_false'
                 ? [
