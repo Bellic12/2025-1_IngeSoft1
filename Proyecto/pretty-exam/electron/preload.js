@@ -85,3 +85,8 @@ contextBridge.exposeInMainWorld('userAnswerAPI', {
   create: data => ipcRenderer.invoke('userAnswers:create', data),
   delete: (resultId, questionId) => ipcRenderer.invoke('userAnswers:delete', resultId, questionId),
 })
+
+// Resources API
+contextBridge.exposeInMainWorld('resourcesAPI', {
+  getLogoPath: () => ipcRenderer.invoke('resources:getLogoPath'),
+})

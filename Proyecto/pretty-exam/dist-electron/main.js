@@ -1,11 +1,24 @@
-import { ipcMain as s, app as h, BrowserWindow as O } from "electron";
-import { fileURLToPath as D } from "node:url";
-import { Sequelize as B, DataTypes as r, Op as C } from "sequelize";
-import L, { join as S } from "path";
-import E from "node:path";
-const G = L.dirname(D(import.meta.url)), n = new B({
+import { app as E, ipcMain as s, BrowserWindow as b } from "electron";
+import { fileURLToPath as L } from "node:url";
+import { Sequelize as G, DataTypes as r, Op as C } from "sequelize";
+import O, { join as I } from "path";
+import R from "fs";
+import g from "node:path";
+const U = O.dirname(L(import.meta.url));
+function v() {
+  let t;
+  if (E.isPackaged) {
+    const e = E.getPath("userData");
+    t = I(e, "pretty_exam.db");
+    const a = I(process.resourcesPath, "pretty_exam.db");
+    !R.existsSync(t) && R.existsSync(a) && R.copyFileSync(a, t);
+  } else
+    t = I(U, "..", "pretty_exam.db");
+  return t;
+}
+const n = new G({
   dialect: "sqlite",
-  storage: S(G, "..", "pretty_exam.db"),
+  storage: v(),
   logging: !1
 }), u = n.define(
   "Category",
@@ -165,7 +178,7 @@ u.associate && u.associate();
 d.associate && d.associate();
 m.associate && m.associate();
 y.associate && y.associate();
-const _ = {
+const f = {
   getAll: async () => (await i.findAll({
     include: [
       { model: c, as: "options" },
@@ -221,7 +234,7 @@ const _ = {
         transaction: a,
         type: n.QueryTypes.RAW
       });
-      const x = await n.query(
+      const N = await n.query(
         "SELECT option_id FROM `Option` WHERE `question_id` = ?",
         {
           replacements: [t],
@@ -229,8 +242,8 @@ const _ = {
           type: n.QueryTypes.SELECT
         }
       );
-      if (x.length > 0) {
-        const w = x.map((f) => f.option_id);
+      if (N.length > 0) {
+        const w = N.map((h) => h.option_id);
         await n.query(
           `DELETE FROM \`UserAnswer\` WHERE \`option_id\` IN (${w.map(() => "?").join(",")})`,
           {
@@ -282,8 +295,8 @@ const _ = {
       if (a && a.length > 0 && (o.category_id = {
         [C.in]: a
       }), e && e.trim()) {
-        const w = l(e), f = [];
-        f.push({
+        const w = l(e), h = [];
+        h.push({
           text: n.where(
             n.fn(
               "LOWER",
@@ -312,7 +325,7 @@ const _ = {
             "LIKE",
             `%${w}%`
           )
-        }), (!a || a.length === 0) && f.push(
+        }), (!a || a.length === 0) && h.push(
           n.where(
             n.fn(
               "LOWER",
@@ -342,10 +355,10 @@ const _ = {
             `%${w}%`
           )
         );
-        const R = { [C.or]: f };
+        const P = { [C.or]: h };
         Object.keys(o).length > 0 ? o = {
-          [C.and]: [o, R]
-        } : o = R;
+          [C.and]: [o, P]
+        } : o = P;
       }
       return (await i.findAll({
         where: o,
@@ -368,23 +381,23 @@ const _ = {
     order: [["question_id", "DESC"]]
   })).map((a) => a.get({ plain: !0 }))
 };
-s.handle("questions:getAll", async () => await _.getAll());
-s.handle("questions:create", async (t, e) => await _.create(e));
-s.handle("questions:update", async (t, e, a) => await _.update(e, a));
-s.handle("questions:delete", async (t, e) => await _.delete(e));
-s.handle("questions:search", async (t, e) => await _.search(e));
-s.handle("questions:getByCategory", async (t, e) => await _.getByCategory(e));
-const q = {
+s.handle("questions:getAll", async () => await f.getAll());
+s.handle("questions:create", async (t, e) => await f.create(e));
+s.handle("questions:update", async (t, e, a) => await f.update(e, a));
+s.handle("questions:delete", async (t, e) => await f.delete(e));
+s.handle("questions:search", async (t, e) => await f.search(e));
+s.handle("questions:getByCategory", async (t, e) => await f.getByCategory(e));
+const x = {
   getAll: async () => await c.findAll(),
   getById: async (t) => await c.findOne({ where: { option_id: t } }),
   create: async (t) => await c.create(t),
   update: async (t, e) => await c.update(e, { where: { option_id: t } }),
   delete: async (t) => await c.destroy({ where: { option_id: t } })
 };
-s.handle("options:getAll", async () => await q.getAll());
-s.handle("options:create", async (t, e) => await q.create(e));
-s.handle("options:update", async (t, e, a) => await q.update(e, a));
-s.handle("options:delete", async (t, e) => await q.delete(e));
+s.handle("options:getAll", async () => await x.getAll());
+s.handle("options:create", async (t, e) => await x.create(e));
+s.handle("options:update", async (t, e, a) => await x.update(e, a));
+s.handle("options:delete", async (t, e) => await x.delete(e));
 const A = {
   // Get all categories
   getAll: async () => (await u.findAll({
@@ -433,7 +446,7 @@ s.handle("categories:create", async (t, e) => await A.create(e));
 s.handle("categories:update", async (t, e, a) => await A.update(e, a));
 s.handle("categories:delete", async (t, e) => await A.delete(e));
 s.handle("categories:nameExists", async (t, e, a = null) => await A.nameExists(e, a));
-const g = {
+const _ = {
   // Get all exams with associated questions
   getAll: async () => (await d.findAll({
     include: [{ model: i, as: "questions" }]
@@ -574,7 +587,7 @@ const g = {
   delete: async (t) => await m.destroy({ where: { result_id: t } })
 };
 console.log("Gemini API key is not set.");
-const P = {
+const Q = {
   explainQuestion: async (t, e) => {
     throw new Error("Gemini API key is not set.");
   },
@@ -583,22 +596,22 @@ const P = {
     throw new Error("Gemini API key is not set.");
   }
 };
-s.handle("ai:explainQuestion", async (t, e, a) => await P.explainQuestion(e, a));
-s.handle("ai:feedbackExam", async (t, e, a) => await P.feedbackExam(e, a));
-s.handle("exams:getAll", async () => await g.getAll());
-s.handle("exams:getById", async (t, e) => await g.getById(e));
-s.handle("exams:create", async (t, e) => await g.create(e));
-s.handle("exams:update", async (t, e, a) => await g.update(e, a));
-s.handle("exams:delete", async (t, e) => await g.delete(e));
-s.handle("exams:getQuestions", async (t, e) => await g.getQuestions(e));
-s.handle("exams:addQuestions", async (t, e, a) => await g.addQuestions(e, a));
-s.handle("exams:removeQuestions", async (t, e, a) => await g.removeQuestions(e, a));
+s.handle("ai:explainQuestion", async (t, e, a) => await Q.explainQuestion(e, a));
+s.handle("ai:feedbackExam", async (t, e, a) => await Q.feedbackExam(e, a));
+s.handle("exams:getAll", async () => await _.getAll());
+s.handle("exams:getById", async (t, e) => await _.getById(e));
+s.handle("exams:create", async (t, e) => await _.create(e));
+s.handle("exams:update", async (t, e, a) => await _.update(e, a));
+s.handle("exams:delete", async (t, e) => await _.delete(e));
+s.handle("exams:getQuestions", async (t, e) => await _.getQuestions(e));
+s.handle("exams:addQuestions", async (t, e, a) => await _.addQuestions(e, a));
+s.handle("exams:removeQuestions", async (t, e, a) => await _.removeQuestions(e, a));
 s.handle("results:getAll", async () => await T.getAll());
 s.handle("results:getById", async (t, e) => await T.getById(e));
 s.handle("results:create", async (t, e) => await T.create(e));
 s.handle("results:delete", async (t, e) => await T.delete(e));
 s.handle("results:getByExamId", async (t, e) => await T.getByExamId(e));
-const N = {
+const q = {
   getAll: async () => await y.findAll({ include: ["result", "question", "option"] }),
   getById: async (t, e) => await y.findOne({
     where: { result_id: t, question_id: e },
@@ -617,42 +630,52 @@ const N = {
   },
   delete: async (t, e) => await y.destroy({ where: { result_id: t, question_id: e } })
 };
-s.handle("userAnswers:getAll", async () => await N.getAll());
-s.handle("userAnswers:getById", async (t, e, a) => await N.getById(e, a));
-s.handle("userAnswers:create", async (t, e) => await N.create(e));
-s.handle("userAnswers:delete", async (t, e, a) => await N.delete(e, a));
-const b = E.dirname(D(import.meta.url));
-process.env.APP_ROOT = E.join(b, "..");
-const I = process.env.VITE_DEV_SERVER_URL, W = E.join(process.env.APP_ROOT, "dist-electron"), Q = E.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = I ? E.join(process.env.APP_ROOT, "public") : Q;
+s.handle("userAnswers:getAll", async () => await q.getAll());
+s.handle("userAnswers:getById", async (t, e, a) => await q.getById(e, a));
+s.handle("userAnswers:create", async (t, e) => await q.create(e));
+s.handle("userAnswers:delete", async (t, e, a) => await q.delete(e, a));
+function K() {
+  return E.isPackaged ? O.join(process.resourcesPath, "Logo.png") : O.join(process.env.VITE_PUBLIC, "Logo.png");
+}
+s.handle("resources:getLogoPath", async () => {
+  try {
+    return K();
+  } catch (t) {
+    throw console.error("Error getting logo path:", t), t;
+  }
+});
+const S = g.dirname(L(import.meta.url));
+process.env.APP_ROOT = g.join(S, "..");
+const D = process.env.VITE_DEV_SERVER_URL, $ = g.join(process.env.APP_ROOT, "dist-electron"), k = g.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = D ? g.join(process.env.APP_ROOT, "public") : k;
 let p = null;
-function k() {
-  p = new O({
-    icon: E.join(process.env.VITE_PUBLIC, "Logo.png"),
+function B() {
+  p = new b({
+    icon: g.join(process.env.VITE_PUBLIC, "Logo.png"),
     webPreferences: {
-      preload: E.join(b, "preload.mjs")
+      preload: g.join(S, "preload.mjs")
     }
   }), p.webContents.on("did-finish-load", () => {
     p == null || p.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
-  }), I ? p.loadURL(I) : p.loadFile(E.join(Q, "index.html"));
+  }), D ? p.loadURL(D) : p.loadFile(g.join(k, "index.html"));
 }
-h.on("window-all-closed", () => {
-  process.platform !== "darwin" && (h.quit(), p = null);
+E.on("window-all-closed", () => {
+  process.platform !== "darwin" && (E.quit(), p = null);
 });
-h.on("activate", () => {
-  O.getAllWindows().length === 0 && k();
+E.on("activate", () => {
+  b.getAllWindows().length === 0 && B();
 });
-h.whenReady().then(async () => {
+E.whenReady().then(async () => {
   try {
     await n.authenticate(), console.log("Database connection established.");
   } catch (t) {
-    console.error("Error connecting to the database:", t), h.quit();
+    console.error("Error connecting to the database:", t), E.quit();
     return;
   }
-  k();
+  B();
 });
 export {
-  W as MAIN_DIST,
-  Q as RENDERER_DIST,
-  I as VITE_DEV_SERVER_URL
+  $ as MAIN_DIST,
+  k as RENDERER_DIST,
+  D as VITE_DEV_SERVER_URL
 };

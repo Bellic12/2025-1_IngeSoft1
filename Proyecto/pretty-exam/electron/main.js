@@ -9,6 +9,7 @@ import './ipcHandlers/ai.ipc.js'
 import './ipcHandlers/exam.ipc.js'
 import './ipcHandlers/result.ipc.js'
 import './ipcHandlers/userAnswer.ipc.js'
+import './ipcHandlers/resources.ipc.js'
 import sequelize from './config/database.js'
 import path from 'node:path'
 
