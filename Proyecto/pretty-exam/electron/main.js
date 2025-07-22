@@ -2,14 +2,14 @@ import { app, BrowserWindow } from 'electron'
 // import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 // Import ipc handlers
-import './ipcHandlers/question.ipc.js'
-import './ipcHandlers/option.ipc.js'
-import './ipcHandlers/category.ipc.js'
-import './ipcHandlers/ai.ipc.js'
-import './ipcHandlers/exam.ipc.js'
-import './ipcHandlers/result.ipc.js'
-import './ipcHandlers/userAnswer.ipc.js'
-import './ipcHandlers/resources.ipc.js'
+import './modules/questions/question.ipc.js'
+import './modules/shared/option.ipc.js'
+import './modules/categories/category.ipc.js'
+import './modules/ai/ai.ipc.js'
+import './modules/exams/exam.ipc.js'
+import './modules/results/result.ipc.js'
+import './modules/shared/userAnswer.ipc.js'
+import './modules/shared/resources.ipc.js'
 import sequelize from './config/database.js'
 import path from 'node:path'
 
@@ -47,7 +47,6 @@ function createWindow() {
     minHeight: 600,
     center: true,
     show: false, // Don't show until ready-to-show
-    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       nodeIntegration: false,
@@ -68,7 +67,7 @@ function createWindow() {
   win.once('ready-to-show', () => {
     win.show()
     win.focus()
-    
+
     // Only open DevTools manually when needed (F12 or Ctrl+Shift+I)
     // Avoid automatic DevTools opening to prevent Autofill errors
     // if (VITE_DEV_SERVER_URL) {
@@ -101,7 +100,7 @@ function createWindow() {
       'protocol_client.js',
       'Request Autofill.enable failed',
     ]
-    
+
     if (suppressedMessages.some(suppressed => message.includes(suppressed))) {
       // These messages are suppressed - no action needed
     }
