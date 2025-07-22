@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Calendar, Clock } from 'lucide-react'
 
 import { toast } from 'react-toastify'
-import { formatDate, formatMinutes, formatTimeString } from '../utils/format'
+import { formatDate, formatMinutes, formatTimeString } from '../../../utils/format'
 
 const ExamHistory = () => {
   const { id } = useParams()

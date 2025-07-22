@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { useExamSim } from './examSimContext'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Flag, AlertTriangle } from 'lucide-react'
-import QuestionDisplay from './QuestionDisplay'
-import ExamTimer from './ExamTimer'
+import QuestionDisplay from '../../questions/components/questionDisplay'
+import ExamTimer from './examTimer'
 import { toast } from 'react-toastify'
 
 const ExamSimulation = () => {

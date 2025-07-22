@@ -2,9 +2,9 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Plus, Play, ArrowLeft, History, Filter } from 'lucide-react'
 import { toast } from 'react-toastify'
-import Question from '../components/question'
-import AddQuestionsModal from '../components/forms/addQuestionsModal'
-import CategoryFilter from '../components/CategoryFilter'
+import Question from '../../questions/components/question'
+import AddQuestionsModal from '../forms/addQuestionsModal'
+import CategoryFilter from '../../categories/components/CategoryFilter'
 
 const ExamDetail = () => {
   const { id } = useParams()

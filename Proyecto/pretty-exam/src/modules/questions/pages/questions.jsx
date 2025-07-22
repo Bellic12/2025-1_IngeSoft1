@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef } from 'react'
 import { Filter, Wand2 } from 'lucide-react'
 import Question from '../components/question'
-import CreateQuestionModal from '../components/forms/createQuestionModal'
-import CategoryFilter from '../components/CategoryFilter'
-import AIQuestionGenerator from '../components/aiQuestionGenerator'
+import CreateQuestionModal from '../forms/createQuestionModal'
+import CategoryFilter from '../../categories/components/CategoryFilter'
+import AIQuestionGenerator from '../../ai/components/aiQuestionGenerator'
 
 const Questions = () => {
   const [questions, setQuestions] = useState([])

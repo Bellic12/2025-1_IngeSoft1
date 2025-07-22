@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Edit2, Tag } from 'lucide-react'
-import CategoryFilter from '../CategoryFilter'
+import CategoryFilter from '../../categories/components/CategoryFilter'
 
 const EditAIQuestion = ({ question, onSave, onCancel, categories }) => {
   const [text, setText] = useState('')

@@ -1,4 +1,4 @@
-import QuestionFactory from '../factories/QuestionFactory.js'
+import QuestionFactory from '../QuestionFactory.js'
 
 describe('QuestionFactory', () => {
   describe('createQuestion', () => {

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useExamSim } from './examSimContext'
 import { CheckCircle, XCircle, Award, BarChart3, Home, Sparkles } from 'lucide-react'
-import ExplainQuestion from './explainQuestion'
+import ExplainQuestion from '../../questions/components/explainQuestion'
 
 const ExamResults = () => {
   const {

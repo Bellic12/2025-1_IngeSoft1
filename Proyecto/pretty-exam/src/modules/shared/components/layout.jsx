@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { BookOpen, HelpCircle, Menu, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
-import { ExamSimProvider } from '../components/examSimContext'
+import { ExamSimProvider } from '../../exams/components/examSimContext'
 
 const Layout = () => {
   const location = useLocation()

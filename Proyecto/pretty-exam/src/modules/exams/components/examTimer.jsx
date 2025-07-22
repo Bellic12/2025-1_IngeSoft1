@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Clock, AlertTriangle } from 'lucide-react'
-import { formatTimeSeconds } from '../utils/format'
+import { formatTimeSeconds } from '../../../utils/format'
 
 const ExamTimer = ({ timeLimit, onTimeUp, onFiveMinuteWarning, onOneMinuteWarning }) => {
   const [timeLeft, setTimeLeft] = useState(timeLimit * 60)

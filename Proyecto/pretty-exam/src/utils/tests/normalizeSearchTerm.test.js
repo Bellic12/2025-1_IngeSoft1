@@ -1,4 +1,4 @@
-import { normalizeSearchTerm } from './normalizeSearchTerm'
+import { normalizeSearchTerm } from '../normalizeSearchTerm'
 
 describe('normalizeSearchTerm', () => {
   test('convertir a minúsculas, caso base', () => {

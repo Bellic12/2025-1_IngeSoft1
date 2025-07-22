@@ -1,7 +1,7 @@
 import { Tag, Edit2, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
-import CategoryFilter from '../CategoryFilter'
+import CategoryFilter from '../../categories/components/CategoryFilter'
 
 const getInitialOptions = type =>
   type === 'multiple_choice'

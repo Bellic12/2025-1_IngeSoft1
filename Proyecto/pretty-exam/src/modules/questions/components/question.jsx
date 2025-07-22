@@ -1,8 +1,8 @@
 'use client'
 import { Sparkles } from 'lucide-react'
-import UpdateQuestion from './forms/updateQuestion'
-import DeleteQuestion from './forms/deleteQuestion'
-import ViewQuestion from './forms/viewQuestion'
+import UpdateQuestion from '../forms/updateQuestion'
+import DeleteQuestion from '../forms/deleteQuestion'
+import ViewQuestion from '../forms/ViewQuestion'
 
 const getTypeBadge = type => {
   switch (type) {

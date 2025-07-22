@@ -1,8 +1,8 @@
 import { Calendar, Clock, HelpCircle, Play } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import UpdateExam from './forms/updateExam'
-import DeleteExam from './forms/deleteExam'
+import UpdateExam from '../forms/updateExam'
+import DeleteExam from '../forms/deleteExam'
 
 const Exam = ({ exam, fetchExams }) => {
   const navigate = useNavigate()

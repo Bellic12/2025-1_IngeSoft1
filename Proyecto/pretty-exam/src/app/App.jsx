@@ -1,13 +1,13 @@
 import { HashRouter, Route, Routes } from 'react-router-dom'
-import Layout from './pages/layout'
-import Questions from './pages/questions'
-import Exams from './pages/exams'
-import ExamDetail from './pages/examDetail'
+import Layout from '../modules/shared/components/layout'
+import Questions from '../modules/questions/pages/questions'
+import Exams from '../modules/exams/pages/exams'
+import ExamDetail from '../modules/exams/pages/examDetail'
 import { ToastContainer } from 'react-toastify'
-import ExamSimulation from './components/examSimulation'
-import { ExamSimProvider } from './components/examSimContext'
-import ExamResults from './components/examResults'
-import ExamHistory from './pages/examHistory'
+import ExamSimulation from '../modules/exams/components/examSimulation'
+import { ExamSimProvider } from '../modules/exams/components/examSimContext'
+import ExamResults from '../modules/exams/components/examResults'
+import ExamHistory from '../modules/exams/pages/examHistory'
 
 function App() {
   return (

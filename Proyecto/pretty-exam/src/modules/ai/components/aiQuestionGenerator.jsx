@@ -21,7 +21,7 @@ import {
   CheckCircle,
 } from 'lucide-react'
 import pdfToText from 'react-pdftotext'
-import EditAIQuestion from './forms/EditAIQuestion'
+import EditAIQuestion from '../../questions/forms/EditAIQuestion'
 import { toast } from 'react-toastify'
 
 const AIQuestionGenerator = ({

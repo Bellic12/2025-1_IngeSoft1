@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef } from 'react'
 import { X, Plus, Sparkles, Filter } from 'lucide-react'
 import { toast } from 'react-toastify'
-import CreateQuestion from './createQuestion'
-import AIQuestionGenerator from '../aiQuestionGenerator'
-import CategoryFilter from '../CategoryFilter'
+import CreateQuestion from '../../questions/forms/createQuestion'
+import AIQuestionGenerator from '../../ai/components/aiQuestionGenerator'
+import CategoryFilter from '../../categories/components/CategoryFilter'
 
 const AddQuestionsModal = ({ examId, onClose, onQuestionsAdded }) => {
   const [allQuestions, setAllQuestions] = useState([])

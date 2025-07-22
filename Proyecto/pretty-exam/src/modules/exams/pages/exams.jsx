@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import Exam from '../components/exam'
-import CreateExam from '../components/forms/createExam'
+import CreateExam from '../forms/createExam'
 
 const Exams = () => {
   const [exams, setExams] = useState([])
