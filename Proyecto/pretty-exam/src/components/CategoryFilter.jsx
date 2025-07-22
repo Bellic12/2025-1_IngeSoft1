@@ -221,7 +221,6 @@ const CategoryFilter = ({
       } else if (categoryQuestions.length > 0) {
         for (const question of categoryQuestions) {
           await window.questionAPI.update(question.question_id, {
-            ...question,
             category_id: null,
           })
         }
